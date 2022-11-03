@@ -1,0 +1,709 @@
+@startuml
+namespace netpoll {
+    interface Conn  {
+        + Fd() int
+
+    }
+    interface Connection  {
+        + Reader() Reader
+        + Writer() Writer
+        + IsActive() bool
+        + SetReadTimeout(timeout time.Duration) error
+        + SetIdleTimeout(timeout time.Duration) error
+        + SetOnRequest(on OnRequest) error
+        + AddCloseCallback(callback CloseCallback) error
+
+    }
+    interface Dialer  {
+        + DialConnection(network string, address string, timeout time.Duration) (Connection, error)
+        + DialTimeout(network string, address string, timeout time.Duration) (net.Conn, error)
+
+    }
+    interface EventLoop  {
+        + Serve(ln net.Listener) error
+        + Shutdown(ctx context.Context) error
+
+    }
+    class FDOperator << (S,Aquamarine) >> {
+        - poll Poll
+        - next *FDOperator
+        - state int32
+
+        + FD int
+        + OnRead <font color=blue>func</font>(Poll) error
+        + OnWrite <font color=blue>func</font>(Poll) error
+        + OnHup <font color=blue>func</font>(Poll) error
+        + Inputs <font color=blue>func</font>([][]byte) [][]byte
+        + InputAck <font color=blue>func</font>(int) error
+        + Outputs <font color=blue>func</font>([][]byte) ([][]byte, bool)
+        + OutputAck <font color=blue>func</font>(int) error
+
+        - do() bool
+        - done()
+        - inuse()
+        - unused()
+        - isUnused() bool
+        - reset()
+
+        + Control(event PollEvent) error
+
+    }
+    class LinkBuffer << (S,Aquamarine) >> {
+        - length int64
+        - mallocSize int
+        - head *linkBufferNode
+        - read *linkBufferNode
+        - flush *linkBufferNode
+        - write *linkBufferNode
+        - caches [][]byte
+        - length int32
+        - mallocSize int
+        - head *linkBufferNode
+        - read *linkBufferNode
+        - flush *linkBufferNode
+        - write *linkBufferNode
+        - caches [][]byte
+
+        - readBinary(n int) []byte
+        - book(bookSize int, maxSize int) []byte
+        - bookAck(n int) (int, error)
+        - calcMaxSize() int
+        - indexByte(c byte, skip int) int
+        - resetTail(maxSize int)
+        - recalLen(delta int) int
+        - growth(n int)
+        - isSingleNode(readN int) bool
+        - release() error
+        - readBinary(n int) []byte
+        - book(bookSize int, maxSize int) []byte
+        - bookAck(n int) (int, error)
+        - calcMaxSize() int
+        - indexByte(c byte, skip int) int
+        - resetTail(maxSize int)
+        - recalLen(delta int) int
+        - growth(n int)
+        - isSingleNode(readN int) bool
+
+        + Len() int
+        + IsEmpty() bool
+        + Next(n int) ([]byte, error)
+        + Peek(n int) ([]byte, error)
+        + Skip(n int) error
+        + Release() error
+        + ReadString(n int) (string, error)
+        + ReadBinary(n int) ([]byte, error)
+        + ReadByte() (byte, error)
+        + Until(delim byte) ([]byte, error)
+        + Slice(n int) (Reader, error)
+        + Malloc(n int) ([]byte, error)
+        + MallocLen() int
+        + MallocAck(n int) error
+        + Flush() error
+        + Append(w Writer) error
+        + WriteBuffer(buf *LinkBuffer) error
+        + WriteString(s string) (int, error)
+        + WriteBinary(p []byte) (int, error)
+        + WriteDirect(p []byte, remainLen int) error
+        + WriteByte(p byte) error
+        + Close() error
+        + Bytes() []byte
+        + GetBytes(p [][]byte) [][]byte
+        + Len() int
+        + IsEmpty() bool
+        + Next(n int) ([]byte, error)
+        + Peek(n int) ([]byte, error)
+        + Skip(n int) error
+        + Until(delim byte) ([]byte, error)
+        + Release() error
+        + ReadString(n int) (string, error)
+        + ReadBinary(n int) ([]byte, error)
+        + ReadByte() (byte, error)
+        + Slice(n int) (Reader, error)
+        + Malloc(n int) ([]byte, error)
+        + MallocLen() int
+        + MallocAck(n int) error
+        + Flush() error
+        + Append(w Writer) error
+        + WriteBuffer(buf *LinkBuffer) error
+        + WriteString(s string) (int, error)
+        + WriteBinary(p []byte) (int, error)
+        + WriteDirect(p []byte, remainLen int) error
+        + WriteByte(p byte) error
+        + Close() error
+        + Bytes() []byte
+        + GetBytes(p [][]byte) [][]byte
+
+    }
+    interface Listener  {
+        + Fd() int
+
+    }
+    class Option << (S,Aquamarine) >> {
+        - f <font color=blue>func</font>(*options)
+        - f <font color=blue>func</font>(*options)
+
+    }
+    interface Poll  {
+        + Wait() error
+        + Close() error
+        + Trigger() error
+        + Control(operator *FDOperator, event PollEvent) error
+
+    }
+    interface ReadWriter  {
+    }
+    interface Reader  {
+        + Next(n int) ([]byte, error)
+        + Peek(n int) ([]byte, error)
+        + Skip(n int) error
+        + Until(delim byte) ([]byte, error)
+        + ReadString(n int) (string, error)
+        + ReadBinary(n int) ([]byte, error)
+        + ReadByte() (byte, error)
+        + Slice(n int) (Reader, error)
+        + Release() error
+        + Len() int
+
+    }
+    class TCPAddr << (S,Aquamarine) >> {
+        - isWildcard() bool
+        - opAddr() net.Addr
+        - family() int
+        - sockaddr(family int) (syscall.Sockaddr, error)
+        - toLocal(network string) sockaddr
+
+    }
+    class TCPConnection << (S,Aquamarine) >> {
+    }
+    class UnixAddr << (S,Aquamarine) >> {
+        - isWildcard() bool
+        - opAddr() net.Addr
+        - family() int
+        - sockaddr(family int) (syscall.Sockaddr, error)
+        - toLocal(net string) sockaddr
+
+    }
+    class UnixConnection << (S,Aquamarine) >> {
+    }
+    interface Writer  {
+        + Malloc(n int) ([]byte, error)
+        + WriteString(s string) (int, error)
+        + WriteBinary(b []byte) (int, error)
+        + WriteByte(b byte) error
+        + WriteDirect(p []byte, remainCap int) error
+        + MallocAck(n int) error
+        + Append(w Writer) error
+        + Flush() error
+        + MallocLen() int
+
+    }
+    class barrier << (S,Aquamarine) >> {
+        - bs [][]byte
+        - ivs []syscall.Iovec
+
+    }
+    class callbackNode << (S,Aquamarine) >> {
+        - fn CloseCallback
+        - pre *callbackNode
+
+    }
+    class connection << (S,Aquamarine) >> {
+        - operator *FDOperator
+        - readTimeout time.Duration
+        - readTimer *time.Timer
+        - readTrigger <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - waitReadSize int64
+        - writeTrigger <font color=blue>chan</font> error
+        - inputBuffer *LinkBuffer
+        - outputBuffer *LinkBuffer
+        - inputBarrier *barrier
+        - outputBarrier *barrier
+        - supportZeroCopy bool
+        - maxSize int
+        - bookSize int
+
+        - init(conn Conn, opts *options) error
+        - initNetFD(conn Conn)
+        - initFDOperator()
+        - initFinalizer()
+        - triggerRead()
+        - triggerWrite(err error)
+        - waitRead(n int) error
+        - waitReadWithTimeout(n int) error
+        - fill(need int) error
+        - eofError(n int, err error) error
+        - onPrepare(opts *options) error
+        - onConnect()
+        - onRequest() bool
+        - onProcess(isProcessable <font color=blue>func</font>(*connection) bool, process <font color=blue>func</font>(*connection) ) bool
+        - closeCallback(needLock bool) error
+        - register() error
+        - isIdle() bool
+        - onHup(p Poll) error
+        - onClose() error
+        - closeBuffer()
+        - inputs(vs [][]byte) [][]byte
+        - inputAck(n int) error
+        - outputs(vs [][]byte) ([][]byte, bool)
+        - outputAck(n int) error
+        - rw2r()
+        - flush() error
+
+        + Reader() Reader
+        + Writer() Writer
+        + IsActive() bool
+        + SetIdleTimeout(timeout time.Duration) error
+        + SetReadTimeout(timeout time.Duration) error
+        + Next(n int) ([]byte, error)
+        + Peek(n int) ([]byte, error)
+        + Skip(n int) error
+        + Release() error
+        + Slice(n int) (Reader, error)
+        + Len() int
+        + Until(delim byte) ([]byte, error)
+        + ReadString(n int) (string, error)
+        + ReadBinary(n int) ([]byte, error)
+        + ReadByte() (byte, error)
+        + Malloc(n int) ([]byte, error)
+        + MallocLen() int
+        + Flush() error
+        + MallocAck(n int) error
+        + Append(w Writer) error
+        + WriteString(s string) (int, error)
+        + WriteBinary(b []byte) (int, error)
+        + WriteDirect(p []byte, remainCap int) error
+        + WriteByte(b byte) error
+        + Read(p []byte) (int, error)
+        + Write(p []byte) (int, error)
+        + Close() error
+        + SetOnConnect(onConnect OnConnect) error
+        + SetOnRequest(onRequest OnRequest) error
+        + AddCloseCallback(callback CloseCallback) error
+
+    }
+    class defaultPoll << (S,Aquamarine) >> {
+        - fd int
+        - trigger uint32
+        - hups []<font color=blue>func</font>(Poll) error
+        - fd int
+        - wop *FDOperator
+        - buf []byte
+        - trigger uint32
+        - fd int
+        - trigger uint32
+        - m sync.Map
+        - hups []<font color=blue>func</font>(Poll) error
+        - fd int
+        - wfd int
+        - buf []byte
+        - trigger uint32
+        - m sync.Map
+
+        + Reset <font color=blue>func</font>(int, int)
+        + Handler <font color=blue>func</font>([]epollevent) bool
+
+        - appendHup(operator *FDOperator)
+        - detaches()
+        - handler(events []epollevent) bool
+        - appendHup(operator *FDOperator)
+        - detaches()
+        - appendHup(operator *FDOperator)
+        - detaches()
+        - handler(events []syscall.EpollEvent) bool
+        - appendHup(operator *FDOperator)
+        - detaches()
+
+        + Wait() error
+        + Close() error
+        + Trigger() error
+        + Control(operator *FDOperator, event PollEvent) error
+        + Wait() error
+        + Close() error
+        + Trigger() error
+        + Control(operator *FDOperator, event PollEvent) error
+        + Wait() error
+        + Close() error
+        + Trigger() error
+        + Control(operator *FDOperator, event PollEvent) error
+        + Wait() error
+        + Close() error
+        + Trigger() error
+        + Control(operator *FDOperator, event PollEvent) error
+
+    }
+    class dialer << (S,Aquamarine) >> {
+        - dialTCP(ctx context.Context, network string, address string) (*TCPConnection, error)
+
+        + DialTimeout(network string, address string, timeout time.Duration) (net.Conn, error)
+        + DialConnection(network string, address string, timeout time.Duration) (Connection, error)
+
+    }
+    class epollevent << (S,Aquamarine) >> {
+        - events uint32
+        - data []byte
+        - events uint32
+        - data []byte
+
+        + _ int32
+
+    }
+    class eventLoop << (S,Aquamarine) >> {
+        - opts *options
+        - svr *server
+        - stop <font color=blue>chan</font> error
+
+        - waitQuit() error
+        - quit(err error)
+
+        + Serve(ln net.Listener) error
+        + Shutdown(ctx context.Context) error
+
+    }
+    class exception << (S,Aquamarine) >> {
+        - no syscall.Errno
+        - suffix string
+
+        + Error() string
+        + Is(target error) bool
+        + Unwrap() error
+
+    }
+    interface gracefulExit  {
+        - isIdle() bool
+
+        + Close() error
+
+    }
+    class ioReadWriter << (S,Aquamarine) >> {
+    }
+    class ioReader << (S,Aquamarine) >> {
+        - r Reader
+
+        + Read(p []byte) (int, error)
+
+    }
+    class ioWriter << (S,Aquamarine) >> {
+        - w Writer
+
+        + Write(p []byte) (int, error)
+
+    }
+    class linkBufferNode << (S,Aquamarine) >> {
+        - buf []byte
+        - off int
+        - malloc int
+        - refer int32
+        - readonly bool
+        - origin *linkBufferNode
+        - next *linkBufferNode
+        - buf []byte
+        - off int
+        - malloc int
+        - refer int32
+        - readonly bool
+        - origin *linkBufferNode
+        - next *linkBufferNode
+
+        + Len() int
+        + IsEmpty() bool
+        + Reset()
+        + Next(n int) []byte
+        + Peek(n int) []byte
+        + Malloc(n int) []byte
+        + Refer(n int) *linkBufferNode
+        + Release() error
+        + Len() int
+        + IsEmpty() bool
+        + Reset()
+        + Next(n int) []byte
+        + Peek(n int) []byte
+        + Malloc(n int) []byte
+        + Refer(n int) *linkBufferNode
+        + Release() error
+
+    }
+    class listener << (S,Aquamarine) >> {
+        - fd int
+        - addr net.Addr
+        - ln net.Listener
+        - pconn net.PacketConn
+        - file *os.File
+
+        - parseFD() error
+
+        + Accept() (net.Conn, error)
+        + UDPAccept() (net.Conn, error)
+        + Close() error
+        + Addr() net.Addr
+        + Fd() int
+
+    }
+    interface loadbalance  {
+        + LoadBalance() LoadBalance
+        + Pick() Poll
+        + Rebalance(polls []Poll)
+
+    }
+    class locker << (S,Aquamarine) >> {
+        - keychain []int32
+
+        - closeBy(w who) bool
+        - isCloseBy(w who) bool
+        - lock(k key) bool
+        - unlock(k key)
+        - stop(k key)
+        - isUnlock(k key) bool
+
+    }
+    class manager << (S,Aquamarine) >> {
+        - balance loadbalance
+        - polls []Poll
+
+        + NumLoops int
+
+        + SetNumLoops(numLoops int) error
+        + SetLoadBalance(lb LoadBalance) error
+        + Close() error
+        + Run() error
+        + Reset() error
+        + Pick() Poll
+
+    }
+    class netFD << (S,Aquamarine) >> {
+        - fd int
+        - pd *pollDesc
+        - closed uint32
+        - isStream bool
+        - zeroReadIsEOF bool
+        - family int
+        - sotype int
+        - isConnected bool
+        - network string
+        - localAddr net.Addr
+        - remoteAddr net.Addr
+
+        - dial(ctx context.Context, laddr sockaddr, raddr sockaddr) error
+        - connect(ctx context.Context, la syscall.Sockaddr, ra syscall.Sockaddr) (syscall.Sockaddr, error)
+
+        + Fd() int
+        + Read(b []byte) (int, error)
+        + Write(b []byte) (int, error)
+        + Close() error
+        + LocalAddr() net.Addr
+        + RemoteAddr() net.Addr
+        + SetKeepAlive(second int) error
+        + SetDeadline(t time.Time) error
+        + SetReadDeadline(t time.Time) error
+        + SetWriteDeadline(t time.Time) error
+
+    }
+    class netpoll.CloseCallback << (T, #FF7700) >>  {
+    }
+    class netpoll.LoadBalance << (T, #FF7700) >>  {
+    }
+    class netpoll.OnConnect << (T, #FF7700) >>  {
+    }
+    class netpoll.OnPrepare << (T, #FF7700) >>  {
+    }
+    class netpoll.OnRequest << (T, #FF7700) >>  {
+    }
+    class netpoll.PollEvent << (T, #FF7700) >>  {
+    }
+    class netpoll.key << (T, #FF7700) >>  {
+    }
+    class netpoll.who << (T, #FF7700) >>  {
+    }
+    class onEvent << (S,Aquamarine) >> {
+        - ctx context.Context
+        - onConnectCallback atomic.Value
+        - onRequestCallback atomic.Value
+        - closeCallbacks atomic.Value
+
+    }
+    class operatorCache << (S,Aquamarine) >> {
+        - locked int32
+        - first *FDOperator
+        - cache []*FDOperator
+
+        - alloc() *FDOperator
+        - free(op *FDOperator)
+        - lock()
+        - unlock()
+
+    }
+    class options << (S,Aquamarine) >> {
+        - onPrepare OnPrepare
+        - onConnect OnConnect
+        - onRequest OnRequest
+        - readTimeout time.Duration
+        - idleTimeout time.Duration
+
+    }
+    class pollArgs << (S,Aquamarine) >> {
+        - size int
+        - caps int
+        - events []epollevent
+        - barriers []barrier
+        - hups []<font color=blue>func</font>(Poll) error
+        - size int
+        - caps int
+        - events []syscall.EpollEvent
+        - barriers []barrier
+        - hups []<font color=blue>func</font>(Poll) error
+
+        - reset(size int, caps int)
+        - reset(size int, caps int)
+
+    }
+    class pollDesc << (S,Aquamarine) >> {
+        - once sync.Once
+        - operator *FDOperator
+        - writeTrigger <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - closeTrigger <font color=blue>chan</font> <font color=blue>struct</font>{}
+
+        - onwrite(p Poll) error
+        - onhup(p Poll) error
+        - detach()
+
+        + WaitWrite(ctx context.Context) error
+
+    }
+    class randomLB << (S,Aquamarine) >> {
+        - polls []Poll
+        - pollSize int
+
+        + LoadBalance() LoadBalance
+        + Pick() Poll
+        + Rebalance(polls []Poll)
+
+    }
+    class roundRobinLB << (S,Aquamarine) >> {
+        - polls []Poll
+        - accepted uintptr
+        - pollSize int
+
+        + LoadBalance() LoadBalance
+        + Pick() Poll
+        + Rebalance(polls []Poll)
+
+    }
+    class server << (S,Aquamarine) >> {
+        - operator FDOperator
+        - ln Listener
+        - opts *options
+        - onQuit <font color=blue>func</font>(error)
+        - connections sync.Map
+
+        + Run() error
+        + Close(ctx context.Context) error
+        + OnRead(p Poll) error
+        + OnHup(p Poll) error
+
+    }
+    interface sockaddr  {
+        - family() int
+        - isWildcard() bool
+        - sockaddr(family int) (syscall.Sockaddr, error)
+        - toLocal(net string) sockaddr
+
+    }
+    class sysDialer << (S,Aquamarine) >> {
+        - network string
+
+        - dialTCP(ctx context.Context, laddr *TCPAddr, raddr *TCPAddr) (*TCPConnection, error)
+        - dialUnix(ctx context.Context, laddr *UnixAddr, raddr *UnixAddr) (*UnixConnection, error)
+
+    }
+    class zcReadWriter << (S,Aquamarine) >> {
+    }
+    class zcReader << (S,Aquamarine) >> {
+        - r io.Reader
+        - buf *LinkBuffer
+
+        - waitRead(n int) error
+        - fill(n int) error
+
+        + Next(n int) ([]byte, error)
+        + Peek(n int) ([]byte, error)
+        + Skip(n int) error
+        + Release() error
+        + Slice(n int) (Reader, error)
+        + Len() int
+        + ReadString(n int) (string, error)
+        + ReadBinary(n int) ([]byte, error)
+        + ReadByte() (byte, error)
+        + Until(delim byte) ([]byte, error)
+
+    }
+    class zcWriter << (S,Aquamarine) >> {
+        - w io.Writer
+        - buf *LinkBuffer
+
+        + Malloc(n int) ([]byte, error)
+        + MallocLen() int
+        + Flush() error
+        + MallocAck(n int) error
+        + Append(w2 Writer) error
+        + WriteString(s string) (int, error)
+        + WriteBinary(b []byte) (int, error)
+        + WriteDirect(p []byte, remainCap int) error
+        + WriteByte(b byte) error
+
+    }
+    class "<font color=blue>func</font>(Connection) context.Context" as fontcolorbluefuncfontConnectioncontextContext {
+        'This class was created so that we can correctly have an alias pointing to this name. Since it contains dots that can break namespaces
+    }
+    class "<font color=blue>func</font>(context.Context, Connection) context.Context" as fontcolorbluefuncfontcontextContextConnectioncontextContext {
+        'This class was created so that we can correctly have an alias pointing to this name. Since it contains dots that can break namespaces
+    }
+    class "<font color=blue>func</font>(context.Context, Connection) error" as fontcolorbluefuncfontcontextContextConnectionerror {
+        'This class was created so that we can correctly have an alias pointing to this name. Since it contains dots that can break namespaces
+    }
+}
+"sync.Mutex" *-- "netpoll.LinkBuffer"
+"netpoll.Reader" *-- "netpoll.ReadWriter"
+"netpoll.Writer" *-- "netpoll.ReadWriter"
+"net.TCPAddr" *-- "netpoll.TCPAddr"
+"netpoll.connection" *-- "netpoll.TCPConnection"
+"net.UnixAddr" *-- "netpoll.UnixAddr"
+"netpoll.connection" *-- "netpoll.UnixConnection"
+"netpoll.locker" *-- "netpoll.connection"
+"netpoll.netFD" *-- "netpoll.connection"
+"netpoll.onEvent" *-- "netpoll.connection"
+"netpoll.pollArgs" *-- "netpoll.defaultPoll"
+"sync.Mutex" *-- "netpoll.eventLoop"
+"netpoll.ioReader" *-- "netpoll.ioReadWriter"
+"netpoll.ioWriter" *-- "netpoll.ioReadWriter"
+"net.Dialer" *-- "netpoll.sysDialer"
+"netpoll.zcReader" *-- "netpoll.zcReadWriter"
+"netpoll.zcWriter" *-- "netpoll.zcReadWriter"
+
+"netpoll.Reader" <|-- "netpoll.LinkBuffer"
+"netpoll.Writer" <|-- "netpoll.LinkBuffer"
+"netpoll.sockaddr" <|-- "netpoll.TCPAddr"
+"netpoll.sockaddr" <|-- "netpoll.UnixAddr"
+"netpoll.Connection" <|-- "netpoll.connection"
+"netpoll.Reader" <|-- "netpoll.connection"
+"netpoll.Writer" <|-- "netpoll.connection"
+"netpoll.gracefulExit" <|-- "netpoll.connection"
+"netpoll.Poll" <|-- "netpoll.defaultPoll"
+"netpoll.Dialer" <|-- "netpoll.dialer"
+"netpoll.EventLoop" <|-- "netpoll.eventLoop"
+"netpoll.Conn" <|-- "netpoll.listener"
+"netpoll.Listener" <|-- "netpoll.listener"
+"netpoll.Conn" <|-- "netpoll.netFD"
+"netpoll.Listener" <|-- "netpoll.netFD"
+"netpoll.loadbalance" <|-- "netpoll.randomLB"
+"netpoll.loadbalance" <|-- "netpoll.roundRobinLB"
+"netpoll.Reader" <|-- "netpoll.zcReader"
+"netpoll.Writer" <|-- "netpoll.zcWriter"
+
+"__builtin__.int" #.. "netpoll.LoadBalance"
+"__builtin__.int" #.. "netpoll.PollEvent"
+"__builtin__.int32" #.. "netpoll.key"
+"__builtin__.int32" #.. "netpoll.who"
+"netpoll.fontcolorbluefuncfontConnectioncontextContext" #.. "netpoll.OnPrepare"
+"netpoll.<font color=blue>func</font>(Connection) error" #.. "netpoll.CloseCallback"
+"netpoll.fontcolorbluefuncfontcontextContextConnectioncontextContext" #.. "netpoll.OnConnect"
+"netpoll.fontcolorbluefuncfontcontextContextConnectionerror" #.. "netpoll.OnRequest"
+@enduml
