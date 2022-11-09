@@ -1,10 +1,13 @@
 package main
 
 import (
-	"github.com/Softwarekang/knet"
+	"fmt"
 	"log"
 	"net"
+	"syscall"
 	"time"
+
+	"github.com/Softwarekang/knet"
 )
 
 func main() {
@@ -20,13 +23,19 @@ func main() {
 
 	listenerFD := int(file.Fd())
 	onRead := func() error {
-		conn, err := listener.Accept()
+		nfd, stockade, err := syscall.Accept(listenerFD)
 		if err != nil {
-			return err
+			log.Fatal(err)
 		}
+		stockadeInt4 := stockade.(*syscall.SockaddrInet4)
+		tcpAddr := &net.TCPAddr{
+			IP:   stockadeInt4.Addr[0:],
+			Port: stockadeInt4.Port,
+		}
+		fmt.Printf("server  get client conn fd:%d addr:%v", nfd, tcpAddr.String())
 		time.Sleep(5 * time.Second)
-		conn.Close()
-		return nil
+		// after 5 second close conn
+		return syscall.Close(nfd)
 	}
 
 	poller := knet.NewDefaultPoller()
@@ -39,5 +48,6 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// block
 	poller.Wait()
 }

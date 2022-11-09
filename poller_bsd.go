@@ -32,7 +32,6 @@ func NewDefaultPoller() Poll {
 func (k KqueuePoller) Register(netFd *NetFileDesc, eventType PollEventType) error {
 	var filter int16
 	var flags uint16
-
 	switch eventType {
 	case Write:
 		filter, flags = syscall.EVFILT_WRITE, syscall.EV_ADD|syscall.EV_ENABLE
@@ -51,7 +50,7 @@ func (k KqueuePoller) Register(netFd *NetFileDesc, eventType PollEventType) erro
 		Ident:  uint64(netFd.FD),
 		Filter: filter,
 		Flags:  flags,
-		Udata:  *(**byte)(unsafe.Pointer(netFd)),
+		Udata:  *(**byte)(unsafe.Pointer(&netFd)),
 	}}, nil, nil); err != nil {
 		return err
 	}
@@ -74,17 +73,21 @@ func (k KqueuePoller) Wait() error {
 
 		for i := 0; i < n; i++ {
 			event := events[i]
-			netFD := *(**NetFileDesc)(unsafe.Pointer(event.Udata))
+			netFD := *(**NetFileDesc)(unsafe.Pointer(&event.Udata))
 			// check interrupt
 			if event.Flags&syscall.EV_EOF != 0 {
-				netFD.OnInterrupt()
+				if err := netFD.OnInterrupt(); err != nil {
+					fmt.Printf("netFD onInterrupt err:%v", err)
+				}
 				continue
 			}
 
 			// check read
 			if event.Filter == syscall.EVFILT_READ && event.Flags&syscall.EV_ENABLE != 0 {
 				if netFD.OnRead != nil {
-					netFD.OnRead()
+					if err := netFD.OnRead(); err != nil {
+						fmt.Printf("netFD OnRead err:%v", err)
+					}
 				}
 				continue
 			}
@@ -92,7 +95,9 @@ func (k KqueuePoller) Wait() error {
 			// check write
 			if event.Filter == syscall.EVFILT_WRITE && event.Flags&syscall.EV_ENABLE != 0 {
 				if netFD.OnWrite != nil {
-					netFD.OnWrite()
+					if err := netFD.OnWrite(); err != nil {
+						fmt.Printf("netFD OnWrite err:%v", err)
+					}
 				}
 				continue
 			}
