@@ -21,11 +21,30 @@ func main() {
 		log.Fatal(err)
 	}
 
+	poller := knet.NewDefaultPoller()
 	listenerFD := int(file.Fd())
 	onRead := func() error {
 		nfd, stockade, err := syscall.Accept(listenerFD)
 		if err != nil {
 			log.Fatal(err)
+		}
+
+		if err := poller.Register(&knet.NetFileDesc{
+			FD: listenerFD,
+			NetPollListener: knet.NetPollListener{
+				OnRead: func() error {
+					buf := make([]byte, 0, 4)
+					n, err := syscall.Read(listenerFD, buf)
+					if err != nil {
+						return err
+					}
+
+					fmt.Printf("read %d bytes, data:%s\n", n, string(buf))
+					return nil
+				},
+			},
+		}, knet.Read); err != nil {
+			return err
 		}
 		stockadeInt4 := stockade.(*syscall.SockaddrInet4)
 		tcpAddr := &net.TCPAddr{
@@ -38,7 +57,6 @@ func main() {
 		return syscall.Close(nfd)
 	}
 
-	poller := knet.NewDefaultPoller()
 	if err = poller.Register(&knet.NetFileDesc{
 		FD: listenerFD,
 		NetPollListener: knet.NetPollListener{
