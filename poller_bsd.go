@@ -76,8 +76,10 @@ func (k KqueuePoller) Wait() error {
 			netFD := *(**NetFileDesc)(unsafe.Pointer(&event.Udata))
 			// check interrupt
 			if event.Flags&syscall.EV_EOF != 0 {
-				if err := netFD.OnInterrupt(); err != nil {
-					fmt.Printf("netFD onInterrupt err:%v", err)
+				if netFD.OnInterrupt != nil {
+					if err := netFD.OnInterrupt(); err != nil {
+						fmt.Printf("netFD onInterrupt err:%v", err)
+					}
 				}
 				continue
 			}

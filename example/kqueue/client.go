@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 )
 
 func main() {
@@ -13,5 +14,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println(conn.RemoteAddr())
+	n, err := conn.Write([]byte("hello"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("client send %d bytes data to server:%s\n", n, conn.RemoteAddr().String())
+	time.Sleep(5 * time.Second)
 }
