@@ -19,14 +19,52 @@ const (
 
 // Connection some connection  operations
 type Connection interface {
+	// ID for conn
 	ID() uint32
+	// LocalAddr local address for conn
 	LocalAddr() string
+	// RemoteAddr remote address for conn
 	RemoteAddr() string
-	readTimeout() time.Duration
+	// ReadTimeout timeout for read
+	ReadTimeout() time.Duration
+	// SetReadTimeout setup read timeout
 	SetReadTimeout(time.Duration)
-	writeTimeout() time.Duration
+	// WriteTimeout timeout for write
+	WriteTimeout() time.Duration
+	// SetWriteTimeout setup write timeout
 	SetWriteTimeout(time.Duration)
-	close()
+	// Close will interrupt conn
+	Close()
+}
+
+// Conn net.conn with fd
+type Conn interface {
+	net.Conn
+
+	// FD will return conn fd
+	FD() int
+}
+
+type wrappedConn struct {
+	net.Conn
+	fd int
+}
+
+// NewWrappedConn .
+func NewWrappedConn(conn net.Conn) (*wrappedConn, error) {
+	file, err := conn.(*net.TCPConn).File()
+	if err != nil {
+		return nil, err
+	}
+	return &wrappedConn{
+		Conn: conn,
+		fd:   int(file.Fd()),
+	}, nil
+}
+
+// FD .
+func (w *wrappedConn) FD() int {
+	return w.fd
 }
 
 type kNetConn struct {
@@ -52,15 +90,15 @@ func (c *kNetConn) RegisterPoller() error {
 // OnRead refactor for conn
 func (c *kNetConn) OnRead() error {
 	// 0.25m bytes
-	bytes := make([]byte, 0, 256)
-	_, err := syscall.Read(c.netFD.FD, bytes)
+	bytes := make([]byte, 256)
+	n, err := syscall.Read(c.netFD.FD, bytes)
 	if err != nil {
 		if err != syscall.EAGAIN {
 			return err
 		}
 	}
 
-	c.inputBuffer.Write(bytes)
+	c.inputBuffer.Write(bytes[:n])
 	return nil
 }
 
@@ -69,7 +107,7 @@ type tcpConn struct {
 	conn net.Conn
 }
 
-func newTcpConn(conn net.Conn) *tcpConn {
+func NewTcpConn(conn Conn) *tcpConn {
 	if conn == nil {
 		panic("newTcpConn(conn net.Conn):@conn is nil")
 	}
@@ -90,6 +128,10 @@ func newTcpConn(conn net.Conn) *tcpConn {
 			writeTimeOut:  atomic.NewDuration(netIOTimeout),
 			localAddress:  localAddress,
 			remoteAddress: remoteAddress,
+			poller:        PollerManager.Pick(),
+			netFD: &NetFileDesc{
+				FD: conn.FD(),
+			},
 		},
 		conn: conn,
 	}
@@ -107,7 +149,7 @@ func (t tcpConn) RemoteAddr() string {
 	return t.remoteAddress
 }
 
-func (t tcpConn) readTimeout() time.Duration {
+func (t tcpConn) ReadTimeout() time.Duration {
 	return t.readTimeOut.Load()
 }
 
@@ -118,7 +160,7 @@ func (t tcpConn) SetReadTimeout(rTimeout time.Duration) {
 	t.readTimeOut = atomic.NewDuration(rTimeout)
 }
 
-func (t tcpConn) writeTimeout() time.Duration {
+func (t tcpConn) WriteTimeout() time.Duration {
 	return t.writeTimeOut.Load()
 }
 
@@ -130,16 +172,12 @@ func (t tcpConn) SetWriteTimeout(wTimeout time.Duration) {
 	t.writeTimeOut = atomic.NewDuration(wTimeout)
 }
 
-func (t tcpConn) writeString(str string) (int, error) {
+func (t tcpConn) WriteString(str string) (int, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (t *tcpConn) Read(n int) ([]byte, error) {
-	return nil, nil
-}
-
-func (t tcpConn) close() {
+func (t tcpConn) Close() {
 	//TODO implement me
 	panic("implement me")
 }
