@@ -11,6 +11,7 @@ type KqueuePoller struct {
 	fd int
 }
 
+// NewDefaultPoller .
 func NewDefaultPoller() Poll {
 	fd, err := syscall.Kqueue()
 	if err != nil {
