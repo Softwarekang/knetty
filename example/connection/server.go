@@ -31,7 +31,7 @@ func main() {
 		}
 
 		tcpConn := knet.NewTcpConn(wrappedConn)
-		return tcpConn.RegisterPoller()
+		return tcpConn.Register()
 	}
 
 	file, err := listener.(*net.TCPListener).File()
