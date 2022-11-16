@@ -80,6 +80,8 @@ type kNetConn struct {
 	poller          Poll
 	inputBuffer     bytes.Buffer
 	closeCallBackFn CloseCallBackFunc
+	waitBufferSize  int
+	waitBufferChan  chan struct{}
 }
 
 // Register register in poller
@@ -109,6 +111,9 @@ func (c *kNetConn) OnRead() error {
 
 	fmt.Printf("buffer input:%s\n", string(bytes))
 	c.inputBuffer.Write(bytes[:n])
+	if c.waitBufferSize > 0 || c.inputBuffer.Len() > c.waitBufferSize {
+		c.waitBufferChan <- struct{}{}
+	}
 	return nil
 }
 
@@ -149,13 +154,14 @@ func NewTcpConn(conn Conn) *tcpConn {
 	syscall.SetNonblock(conn.FD(), true)
 	return &tcpConn{
 		kNetConn: kNetConn{
-			id:            connID.Inc(),
-			fd:            conn.FD(),
-			readTimeOut:   atomic.NewDuration(netIOTimeout),
-			writeTimeOut:  atomic.NewDuration(netIOTimeout),
-			localAddress:  localAddress,
-			remoteAddress: remoteAddress,
-			poller:        PollerManager.Pick(),
+			id:             connID.Inc(),
+			fd:             conn.FD(),
+			readTimeOut:    atomic.NewDuration(netIOTimeout),
+			writeTimeOut:   atomic.NewDuration(netIOTimeout),
+			localAddress:   localAddress,
+			remoteAddress:  remoteAddress,
+			poller:         PollerManager.Pick(),
+			waitBufferChan: make(chan struct{}, 1),
 		},
 		conn: conn,
 	}
@@ -194,11 +200,6 @@ func (t tcpConn) SetWriteTimeout(wTimeout time.Duration) {
 	}
 
 	t.writeTimeOut = atomic.NewDuration(wTimeout)
-}
-
-func (t tcpConn) WriteString(str string) (int, error) {
-	//TODO implement me
-	panic("implement me")
 }
 
 func (t tcpConn) Close() {

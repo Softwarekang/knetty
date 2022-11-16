@@ -31,7 +31,18 @@ func main() {
 		}
 
 		tcpConn := knet.NewTcpConn(wrappedConn)
-		return tcpConn.Register()
+		if err := tcpConn.Register(); err != nil {
+			return err
+		}
+
+		go func() {
+			data, err := tcpConn.ReadString(5)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Println(data + "\n")
+		}()
+		return nil
 	}
 
 	file, err := listener.(*net.TCPListener).File()
