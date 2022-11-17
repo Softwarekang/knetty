@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	"github.com/Softwarekang/knet"
 )
@@ -31,7 +32,22 @@ func main() {
 		}
 
 		tcpConn := knet.NewTcpConn(wrappedConn)
-		return tcpConn.RegisterPoller()
+		if err := tcpConn.Register(); err != nil {
+			return err
+		}
+
+		go func() {
+			for {
+				data, err := tcpConn.ReadString(10)
+				if err != nil {
+					log.Fatal(err)
+				}
+				fmt.Println(data + "\n")
+				time.Sleep(3 * time.Second)
+			}
+
+		}()
+		return nil
 	}
 
 	file, err := listener.(*net.TCPListener).File()

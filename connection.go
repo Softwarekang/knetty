@@ -2,6 +2,7 @@ package knet
 
 import (
 	"bytes"
+	"fmt"
 	"net"
 	"syscall"
 	"time"
@@ -16,6 +17,8 @@ var (
 const (
 	netIOTimeout = time.Second // 1s
 )
+
+type CloseCallBackFunc func() error
 
 // Connection some connection  operations
 type Connection interface {
@@ -68,20 +71,29 @@ func (w *wrappedConn) FD() int {
 }
 
 type kNetConn struct {
-	id            uint32
-	readTimeOut   *atomic.Duration
-	writeTimeOut  *atomic.Duration
-	localAddress  string
-	remoteAddress string
-	netFD         *NetFileDesc
-	poller        Poll
-	inputBuffer   bytes.Buffer
+	id              uint32
+	fd              int
+	readTimeOut     *atomic.Duration
+	writeTimeOut    *atomic.Duration
+	localAddress    string
+	remoteAddress   string
+	poller          Poll
+	inputBuffer     bytes.Buffer
+	closeCallBackFn CloseCallBackFunc
+	waitBufferSize  atomic.Int64
+	waitBufferChan  chan struct{}
+	close           atomic.Int32
 }
 
-// RegisterPoller register in poller
-func (c *kNetConn) RegisterPoller() error {
-	c.netFD.OnRead = c.OnRead
-	if err := c.poller.Register(c.netFD, Read); err != nil {
+// Register register in poller
+func (c *kNetConn) Register() error {
+	if err := c.poller.Register(&NetFileDesc{
+		FD: c.fd,
+		NetPollListener: NetPollListener{
+			OnRead:      c.OnRead,
+			OnInterrupt: c.OnInterrupt,
+		},
+	}, Read); err != nil {
 		return err
 	}
 	return nil
@@ -91,14 +103,34 @@ func (c *kNetConn) RegisterPoller() error {
 func (c *kNetConn) OnRead() error {
 	// 0.25m bytes
 	bytes := make([]byte, 256)
-	n, err := syscall.Read(c.netFD.FD, bytes)
+	n, err := syscall.Read(c.fd, bytes)
 	if err != nil {
 		if err != syscall.EAGAIN {
 			return err
 		}
 	}
 
+	fmt.Printf("buffer input:%s\n", string(bytes))
 	c.inputBuffer.Write(bytes[:n])
+	waitBufferSize := c.waitBufferSize.Load()
+	if waitBufferSize > 0 && int64(c.inputBuffer.Len()) > waitBufferSize {
+		c.waitBufferChan <- struct{}{}
+	}
+	return nil
+}
+
+// OnInterrupt refactor for conn
+func (c *kNetConn) OnInterrupt() error {
+	if err := c.poller.Register(&NetFileDesc{
+		FD: c.fd,
+	}, DeleteRead); err != nil {
+		return err
+	}
+
+	if c.closeCallBackFn != nil {
+		c.closeCallBackFn()
+	}
+	c.close.Store(1)
 	return nil
 }
 
@@ -121,17 +153,18 @@ func NewTcpConn(conn Conn) *tcpConn {
 		remoteAddress = conn.RemoteAddr().String()
 	}
 
+	// set conn no block
+	syscall.SetNonblock(conn.FD(), true)
 	return &tcpConn{
 		kNetConn: kNetConn{
-			id:            connID.Inc(),
-			readTimeOut:   atomic.NewDuration(netIOTimeout),
-			writeTimeOut:  atomic.NewDuration(netIOTimeout),
-			localAddress:  localAddress,
-			remoteAddress: remoteAddress,
-			poller:        PollerManager.Pick(),
-			netFD: &NetFileDesc{
-				FD: conn.FD(),
-			},
+			id:             connID.Inc(),
+			fd:             conn.FD(),
+			readTimeOut:    atomic.NewDuration(netIOTimeout),
+			writeTimeOut:   atomic.NewDuration(netIOTimeout),
+			localAddress:   localAddress,
+			remoteAddress:  remoteAddress,
+			poller:         PollerManager.Pick(),
+			waitBufferChan: make(chan struct{}, 1),
 		},
 		conn: conn,
 	}
@@ -172,12 +205,6 @@ func (t tcpConn) SetWriteTimeout(wTimeout time.Duration) {
 	t.writeTimeOut = atomic.NewDuration(wTimeout)
 }
 
-func (t tcpConn) WriteString(str string) (int, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (t tcpConn) Close() {
-	//TODO implement me
-	panic("implement me")
+	t.OnInterrupt()
 }
