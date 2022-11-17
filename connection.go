@@ -80,8 +80,9 @@ type kNetConn struct {
 	poller          Poll
 	inputBuffer     bytes.Buffer
 	closeCallBackFn CloseCallBackFunc
-	waitBufferSize  int
+	waitBufferSize  atomic.Int64
 	waitBufferChan  chan struct{}
+	close           atomic.Int32
 }
 
 // Register register in poller
@@ -111,7 +112,8 @@ func (c *kNetConn) OnRead() error {
 
 	fmt.Printf("buffer input:%s\n", string(bytes))
 	c.inputBuffer.Write(bytes[:n])
-	if c.waitBufferSize > 0 || c.inputBuffer.Len() > c.waitBufferSize {
+	waitBufferSize := c.waitBufferSize.Load()
+	if waitBufferSize > 0 && int64(c.inputBuffer.Len()) > waitBufferSize {
 		c.waitBufferChan <- struct{}{}
 	}
 	return nil
@@ -128,6 +130,7 @@ func (c *kNetConn) OnInterrupt() error {
 	if c.closeCallBackFn != nil {
 		c.closeCallBackFn()
 	}
+	c.close.Store(1)
 	return nil
 }
 

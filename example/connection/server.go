@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	"github.com/Softwarekang/knet"
 )
@@ -36,11 +37,15 @@ func main() {
 		}
 
 		go func() {
-			data, err := tcpConn.ReadString(5)
-			if err != nil {
-				log.Fatal(err)
+			for {
+				data, err := tcpConn.ReadString(10)
+				if err != nil {
+					log.Fatal(err)
+				}
+				fmt.Println(data + "\n")
+				time.Sleep(3 * time.Second)
 			}
-			fmt.Println(data + "\n")
+
 		}()
 		return nil
 	}

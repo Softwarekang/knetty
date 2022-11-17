@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"time"
 )
 
 func main() {
@@ -20,5 +19,6 @@ func main() {
 	}
 
 	fmt.Printf("client send %d bytes data to server:%s\n", n, conn.RemoteAddr().String())
-	time.Sleep(50 * time.Second)
+	ch := make(chan struct{})
+	ch <- struct{}{}
 }
