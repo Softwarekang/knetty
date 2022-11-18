@@ -64,7 +64,7 @@ func (m *pollerManager) Close() error {
 	return nil
 }
 
-// Run all pollers.
+// Run all pollers
 func (m *pollerManager) Run() error {
 	for idx := len(m.pollers); idx < m.NumLoops; idx++ {
 		var poller = poll.NewDefaultPoller()
