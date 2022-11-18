@@ -1,4 +1,4 @@
-package knet
+package poll
 
 import (
 	"fmt"
