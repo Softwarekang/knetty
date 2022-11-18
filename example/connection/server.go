@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/Softwarekang/knet"
+	"github.com/Softwarekang/knet/connection"
+	kpoll "github.com/Softwarekang/knet/poll"
 )
 
 func main() {
@@ -25,24 +27,24 @@ func main() {
 		}
 
 		fmt.Printf("server %s get accept new client conn:%v \n", conn.LocalAddr().String(), conn.RemoteAddr().String())
-		wrappedConn, err := knet.NewWrappedConn(conn)
+		wrappedConn, err := connection.NewWrappedConn(conn)
 		if err != nil {
 			log.Fatal(err)
 			return err
 		}
 
-		tcpConn := knet.NewTcpConn(wrappedConn)
+		tcpConn := connection.NewTcpConn(wrappedConn)
 		if err := tcpConn.Register(); err != nil {
 			return err
 		}
 
 		go func() {
 			for {
-				data, err := tcpConn.ReadString(10)
+				data, err := tcpConn.Read(10)
 				if err != nil {
 					log.Fatal(err)
 				}
-				fmt.Println(data + "\n")
+				fmt.Println(string(data) + "\n")
 				time.Sleep(3 * time.Second)
 			}
 
@@ -54,12 +56,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err = poller.Register(&knet.NetFileDesc{
+	if err = poller.Register(&kpoll.NetFileDesc{
 		FD: int(file.Fd()),
-		NetPollListener: knet.NetPollListener{
+		NetPollListener: kpoll.NetPollListener{
 			OnRead: onRead,
 		},
-	}, knet.Read); err != nil {
+	}, kpoll.Read); err != nil {
 		log.Fatal(err)
 	}
 

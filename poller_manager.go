@@ -5,6 +5,8 @@ import (
 	"log"
 	"math/rand"
 	"runtime"
+
+	"github.com/Softwarekang/knet/poll"
 )
 
 func setNumLoops(numLoops int) error {
@@ -21,7 +23,7 @@ func init() {
 
 type pollerManager struct {
 	NumLoops int
-	polls    []Poll // all the polls
+	polls    []poll.Poll // all the polls
 }
 
 // SetNumLoops setup num for pollers
@@ -31,7 +33,7 @@ func (m *pollerManager) SetNumLoops(numLoops int) error {
 	}
 
 	if numLoops < m.NumLoops {
-		var polls = make([]Poll, numLoops)
+		var polls = make([]poll.Poll, numLoops)
 		for idx := 0; idx < m.NumLoops; idx++ {
 			if idx < numLoops {
 				polls[idx] = m.polls[idx]
@@ -63,15 +65,15 @@ func (m *pollerManager) Close() error {
 // Run all pollers.
 func (m *pollerManager) Run() error {
 	for idx := len(m.polls); idx < m.NumLoops; idx++ {
-		var poll = NewDefaultPoller()
-		m.polls = append(m.polls, poll)
-		go poll.Wait()
+		var poller = poll.NewDefaultPoller()
+		m.polls = append(m.polls, poller)
+		go poller.Wait()
 	}
 
 	return nil
 }
 
 // Pick rand get a poller
-func (m *pollerManager) Pick() Poll {
+func (m *pollerManager) Pick() poll.Poll {
 	return m.polls[rand.Intn(m.NumLoops)]
 }
