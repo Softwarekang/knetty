@@ -9,8 +9,9 @@ import (
 	"github.com/Softwarekang/knet/poll"
 )
 
-func setNumLoops(numLoops int) error {
-	return PollerManager.SetNumLoops(numLoops)
+// SetPollerNums set reactor goroutine nums
+func SetPollerNums(n int) error {
+	return PollerManager.SetPollerNums(n)
 }
 
 var PollerManager *pollerManager
@@ -18,55 +19,56 @@ var PollerManager *pollerManager
 func init() {
 	var loops = runtime.GOMAXPROCS(0)/20 + 1
 	PollerManager = &pollerManager{}
-	PollerManager.SetNumLoops(loops)
+	_ = PollerManager.SetPollerNums(loops)
 }
 
 type pollerManager struct {
 	NumLoops int
-	polls    []poll.Poll // all the polls
+	pollers  []poll.Poll // all the pollers
 }
 
-// SetNumLoops setup num for pollers
-func (m *pollerManager) SetNumLoops(numLoops int) error {
-	if numLoops < 1 {
-		return fmt.Errorf("set invalid numLoops[%d]", numLoops)
+// SetPollerNums setup num for pollers
+func (m *pollerManager) SetPollerNums(n int) error {
+	if n < 1 {
+		return fmt.Errorf("SetPollerNums(n int):@n < 0")
 	}
 
-	if numLoops < m.NumLoops {
-		var polls = make([]poll.Poll, numLoops)
+	if n < m.NumLoops {
+		var polls = make([]poll.Poll, n)
 		for idx := 0; idx < m.NumLoops; idx++ {
-			if idx < numLoops {
-				polls[idx] = m.polls[idx]
+			if idx < n {
+				polls[idx] = m.pollers[idx]
 			} else {
-				if err := m.polls[idx].Close(); err != nil {
-					log.Printf("poller Close failed: %v\n", err)
+				if err := m.pollers[idx].Close(); err != nil {
+					log.Printf("close poller err: %v\n", err)
 				}
 			}
 		}
-		m.NumLoops = numLoops
-		m.polls = polls
+		m.NumLoops = n
+		m.pollers = polls
 		return nil
 	}
 
-	m.NumLoops = numLoops
+	m.NumLoops = n
 	return m.Run()
 }
 
 // Close release all resources.
 func (m *pollerManager) Close() error {
-	for _, poll := range m.polls {
-		poll.Close()
+	for _, poller := range m.pollers {
+		if err := poller.Close(); err != nil {
+			log.Printf("close poller err:%v \n", err)
+		}
 	}
-	m.NumLoops = 0
-	m.polls = nil
+	m.NumLoops, m.pollers = 0, nil
 	return nil
 }
 
 // Run all pollers.
 func (m *pollerManager) Run() error {
-	for idx := len(m.polls); idx < m.NumLoops; idx++ {
+	for idx := len(m.pollers); idx < m.NumLoops; idx++ {
 		var poller = poll.NewDefaultPoller()
-		m.polls = append(m.polls, poller)
+		m.pollers = append(m.pollers, poller)
 		go poller.Wait()
 	}
 
@@ -75,5 +77,5 @@ func (m *pollerManager) Run() error {
 
 // Pick rand get a poller
 func (m *pollerManager) Pick() poll.Poll {
-	return m.polls[rand.Intn(m.NumLoops)]
+	return m.pollers[rand.Intn(m.NumLoops)]
 }

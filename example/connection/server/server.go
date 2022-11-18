@@ -17,7 +17,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	knet.PollerManager.SetNumLoops(1)
+	knet.PollerManager.SetPollerNums(1)
 	poller := knet.PollerManager.Pick()
 	onRead := func() error {
 		conn, err := listener.Accept()
