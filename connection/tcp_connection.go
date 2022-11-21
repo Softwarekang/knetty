@@ -34,13 +34,14 @@ func NewTcpConn(conn Conn) *tcpConn {
 	syscall.SetNonblock(conn.FD(), true)
 	return &tcpConn{
 		kNetConn: kNetConn{
-			fd:             conn.FD(),
-			readTimeOut:    atomic.NewDuration(netIOTimeout),
-			writeTimeOut:   atomic.NewDuration(netIOTimeout),
-			localAddress:   localAddress,
-			remoteAddress:  remoteAddress,
-			poller:         knet.PollerManager.Pick(),
-			waitBufferChan: make(chan struct{}, 1),
+			fd:               conn.FD(),
+			remoteSocketAddr: conn.RemoteSocketAddr(),
+			readTimeOut:      atomic.NewDuration(netIOTimeout),
+			writeTimeOut:     atomic.NewDuration(netIOTimeout),
+			localAddress:     localAddress,
+			remoteAddress:    remoteAddress,
+			poller:           knet.PollerManager.Pick(),
+			waitBufferChan:   make(chan struct{}, 1),
 		},
 		conn: conn,
 	}
@@ -128,6 +129,24 @@ func (t *tcpConn) read(n int) ([]byte, error) {
 
 	fmt.Printf("read %d length data from input buffer", n)
 	return data, nil
+}
+
+// Write .
+func (t *tcpConn) Write(bytes []byte) (int, error) {
+	return syscall.SendmsgN(t.fd, bytes, nil, t.remoteSocketAddr, 0)
+}
+
+func ipToSockaddrInet4(ip net.IP, port int) (*syscall.SockaddrInet4, error) {
+	if len(ip) == 0 {
+		ip = net.IPv4zero
+	}
+	ip4 := ip.To4()
+	if ip4 == nil {
+		return nil, &net.AddrError{Err: "non-IPv4 address", Addr: ip.String()}
+	}
+	sa := &syscall.SockaddrInet4{Port: port}
+	copy(sa.Addr[:], ip4)
+	return sa, nil
 }
 
 // Len .

@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"syscall"
 )
 
 func main() {
+	var err error
 	network, address := "tcp", "127.0.0.1:8000"
 	conn, err := net.Dial(network, address)
 	if err != nil {
@@ -19,6 +21,18 @@ func main() {
 	}
 
 	fmt.Printf("client send %d bytes data to server:%s\n", n, conn.RemoteAddr().String())
+	go func() {
+		for {
+			data := make([]byte, 1024)
+			n, err = conn.Read(data)
+			if err != nil && err != syscall.EAGAIN {
+				fmt.Printf("read data err:%v", err)
+				return
+			}
+			fmt.Printf("client read server:%s length:%d data:%s\n", conn.RemoteAddr().String(), n, string(data))
+		}
+	}()
+
 	ch := make(chan struct{})
 	ch <- struct{}{}
 }

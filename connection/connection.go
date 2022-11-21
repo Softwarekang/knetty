@@ -39,34 +39,48 @@ type Connection interface {
 	SetWriteTimeout(time.Duration)
 	// Read will return length n bytes
 	Read(n int) ([]byte, error)
+
 	// Len will return conn readable data size
 	Len() int
 	// Close will interrupt conn
 	Close()
 }
 
-// Conn net.conn with fd
+// Conn wrapped net.conn with fd、remote sa
 type Conn interface {
 	net.Conn
 
 	// FD will return conn fd
 	FD() int
+
+	// RemoteSocketAddr will return conn remote sa
+	RemoteSocketAddr() syscall.Sockaddr
 }
 
 type wrappedConn struct {
 	net.Conn
-	fd int
+	remoteSocketAddr syscall.Sockaddr
+	fd               int
 }
 
 // NewWrappedConn .
 func NewWrappedConn(conn net.Conn) (*wrappedConn, error) {
-	file, err := conn.(*net.TCPConn).File()
+	tcpConn := conn.(*net.TCPConn)
+	file, err := tcpConn.File()
 	if err != nil {
 		return nil, err
 	}
+
+	tcpAddr := conn.RemoteAddr().(*net.TCPAddr)
+	remoteScoketAddr, err := ipToSockaddrInet4(tcpAddr.IP, tcpAddr.Port)
+	if err != nil {
+		panic("")
+	}
+
 	return &wrappedConn{
-		Conn: conn,
-		fd:   int(file.Fd()),
+		Conn:             conn,
+		fd:               int(file.Fd()),
+		remoteSocketAddr: remoteScoketAddr,
 	}, nil
 }
 
@@ -75,19 +89,25 @@ func (w *wrappedConn) FD() int {
 	return w.fd
 }
 
+// RemoteSocketAddr .
+func (w *wrappedConn) RemoteSocketAddr() syscall.Sockaddr {
+	return w.remoteSocketAddr
+}
+
 type kNetConn struct {
-	id              uint32
-	fd              int
-	readTimeOut     *atomic.Duration
-	writeTimeOut    *atomic.Duration
-	localAddress    string
-	remoteAddress   string
-	poller          poll.Poll
-	inputBuffer     bytes.Buffer
-	closeCallBackFn CloseCallBackFunc
-	waitBufferSize  atomic.Int64
-	waitBufferChan  chan struct{}
-	close           atomic.Int32
+	id               uint32
+	fd               int
+	readTimeOut      *atomic.Duration
+	writeTimeOut     *atomic.Duration
+	remoteSocketAddr syscall.Sockaddr
+	localAddress     string
+	remoteAddress    string
+	poller           poll.Poll
+	inputBuffer      bytes.Buffer
+	closeCallBackFn  CloseCallBackFunc
+	waitBufferSize   atomic.Int64
+	waitBufferChan   chan struct{}
+	close            atomic.Int32
 }
 
 // Register register in poller
