@@ -45,6 +45,8 @@ func main() {
 					log.Fatal(err)
 				}
 				fmt.Println(string(data) + "\n")
+				n, err := tcpConn.Write(data)
+				fmt.Printf("server write length:%v data:%s\n", n, string(data))
 				time.Sleep(3 * time.Second)
 			}
 
