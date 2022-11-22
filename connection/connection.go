@@ -2,11 +2,12 @@ package connection
 
 import (
 	"bytes"
-	"fmt"
-	"github.com/Softwarekang/knet/poll"
+	mnet "github.com/Softwarekang/knet/pkg/net"
 	"net"
 	"syscall"
 	"time"
+
+	"github.com/Softwarekang/knet/poll"
 
 	"go.uber.org/atomic"
 )
@@ -39,59 +40,12 @@ type Connection interface {
 	SetWriteTimeout(time.Duration)
 	// Read will return length n bytes
 	Read(n int) ([]byte, error)
-
+	// SetCloseCallBack set close callback fun when conn on interrupt
+	SetCloseCallBack(fn CloseCallBackFunc)
 	// Len will return conn readable data size
 	Len() int
 	// Close will interrupt conn
 	Close()
-}
-
-// Conn wrapped net.conn with fd、remote sa
-type Conn interface {
-	net.Conn
-
-	// FD will return conn fd
-	FD() int
-
-	// RemoteSocketAddr will return conn remote sa
-	RemoteSocketAddr() syscall.Sockaddr
-}
-
-type wrappedConn struct {
-	net.Conn
-	remoteSocketAddr syscall.Sockaddr
-	fd               int
-}
-
-// NewWrappedConn .
-func NewWrappedConn(conn net.Conn) (*wrappedConn, error) {
-	tcpConn := conn.(*net.TCPConn)
-	file, err := tcpConn.File()
-	if err != nil {
-		return nil, err
-	}
-
-	tcpAddr := conn.RemoteAddr().(*net.TCPAddr)
-	remoteScoketAddr, err := ipToSockaddrInet4(tcpAddr.IP, tcpAddr.Port)
-	if err != nil {
-		panic("")
-	}
-
-	return &wrappedConn{
-		Conn:             conn,
-		fd:               int(file.Fd()),
-		remoteSocketAddr: remoteScoketAddr,
-	}, nil
-}
-
-// FD .
-func (w *wrappedConn) FD() int {
-	return w.fd
-}
-
-// RemoteSocketAddr .
-func (w *wrappedConn) RemoteSocketAddr() syscall.Sockaddr {
-	return w.remoteSocketAddr
 }
 
 type kNetConn struct {
@@ -135,7 +89,6 @@ func (c *kNetConn) OnRead() error {
 		}
 	}
 
-	fmt.Printf("buffer input:%s\n", string(bytes))
 	c.inputBuffer.Write(bytes[:n])
 	waitBufferSize := c.waitBufferSize.Load()
 	if waitBufferSize > 0 && int64(c.inputBuffer.Len()) > waitBufferSize {
@@ -157,4 +110,52 @@ func (c *kNetConn) OnInterrupt() error {
 	}
 	c.close.Store(1)
 	return nil
+}
+
+// Conn wrapped net.conn with fd、remote sa
+type Conn interface {
+	net.Conn
+
+	// FD will return conn fd
+	FD() int
+
+	// RemoteSocketAddr will return conn remote sa
+	RemoteSocketAddr() syscall.Sockaddr
+}
+
+type wrappedConn struct {
+	net.Conn
+	remoteSocketAddr syscall.Sockaddr
+	fd               int
+}
+
+// NewWrappedConn .
+func NewWrappedConn(conn net.Conn) (*wrappedConn, error) {
+	tcpConn := conn.(*net.TCPConn)
+	file, err := tcpConn.File()
+	if err != nil {
+		return nil, err
+	}
+
+	tcpAddr := conn.RemoteAddr().(*net.TCPAddr)
+	remoteSocketAdder, err := mnet.IPToSockAddrInet4(tcpAddr.IP, tcpAddr.Port)
+	if err != nil {
+		panic("")
+	}
+
+	return &wrappedConn{
+		Conn:             conn,
+		fd:               int(file.Fd()),
+		remoteSocketAddr: remoteSocketAdder,
+	}, nil
+}
+
+// FD .
+func (w *wrappedConn) FD() int {
+	return w.fd
+}
+
+// RemoteSocketAddr .
+func (w *wrappedConn) RemoteSocketAddr() syscall.Sockaddr {
+	return w.remoteSocketAddr
 }

@@ -2,12 +2,14 @@ package connection
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"syscall"
 	"time"
 
 	"github.com/Softwarekang/knet"
+	merr "github.com/Softwarekang/knet/pkg/err"
+	msyscall "github.com/Softwarekang/knet/syscall"
+
 	"go.uber.org/atomic"
 )
 
@@ -31,7 +33,7 @@ func NewTcpConn(conn Conn) *tcpConn {
 	}
 
 	// set conn no block
-	syscall.SetNonblock(conn.FD(), true)
+	msyscall.SetConnectionNoBlock(conn.FD())
 	return &tcpConn{
 		kNetConn: kNetConn{
 			fd:               conn.FD(),
@@ -106,12 +108,12 @@ func (t *tcpConn) waitReadBuffer(n int) error {
 	defer cancel()
 	for t.inputBuffer.Len() < n {
 		if !t.isActive() {
-			return fmt.Errorf("waitReadBufferWithTimeout conn is closed")
+			return merr.ConnClosedErr
 		}
 
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("waitReadBufferWithTimeout ctx timeout")
+			return merr.NetIOTimeoutErr
 		case <-t.waitBufferChan:
 			continue
 		}
@@ -127,26 +129,12 @@ func (t *tcpConn) read(n int) ([]byte, error) {
 		return nil, err
 	}
 
-	fmt.Printf("read %d length data from input buffer", n)
 	return data, nil
 }
 
 // Write .
 func (t *tcpConn) Write(bytes []byte) (int, error) {
 	return syscall.SendmsgN(t.fd, bytes, nil, t.remoteSocketAddr, 0)
-}
-
-func ipToSockaddrInet4(ip net.IP, port int) (*syscall.SockaddrInet4, error) {
-	if len(ip) == 0 {
-		ip = net.IPv4zero
-	}
-	ip4 := ip.To4()
-	if ip4 == nil {
-		return nil, &net.AddrError{Err: "non-IPv4 address", Addr: ip.String()}
-	}
-	sa := &syscall.SockaddrInet4{Port: port}
-	copy(sa.Addr[:], ip4)
-	return sa, nil
 }
 
 // Len .
@@ -158,7 +146,15 @@ func (t *tcpConn) isActive() bool {
 	return t.close.Load() == 0
 }
 
+// SetCloseCallBack .
+func (t *tcpConn) SetCloseCallBack(fn CloseCallBackFunc) {
+	t.closeCallBackFn = fn
+}
+
 // Close .
 func (t tcpConn) Close() {
+	if !t.isActive() {
+		return
+	}
 	t.OnInterrupt()
 }
