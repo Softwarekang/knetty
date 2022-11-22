@@ -40,6 +40,8 @@ type Connection interface {
 	SetWriteTimeout(time.Duration)
 	// Read will return length n bytes
 	Read(n int) ([]byte, error)
+	// Write will send bytes to conn
+	Write(bytes []byte) (int, error)
 	// SetCloseCallBack set close callback fun when conn on interrupt
 	SetCloseCallBack(fn CloseCallBackFunc)
 	// Len will return conn readable data size

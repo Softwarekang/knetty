@@ -6,8 +6,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Softwarekang/knet"
 	merr "github.com/Softwarekang/knet/pkg/err"
+	"github.com/Softwarekang/knet/poll"
 	msyscall "github.com/Softwarekang/knet/syscall"
 
 	"go.uber.org/atomic"
@@ -42,7 +42,7 @@ func NewTcpConn(conn Conn) *tcpConn {
 			writeTimeOut:     atomic.NewDuration(netIOTimeout),
 			localAddress:     localAddress,
 			remoteAddress:    remoteAddress,
-			poller:           knet.PollerManager.Pick(),
+			poller:           poll.PollerManager.Pick(),
 			waitBufferChan:   make(chan struct{}, 1),
 		},
 		conn: conn,

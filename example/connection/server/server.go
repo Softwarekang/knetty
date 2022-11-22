@@ -6,7 +6,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/Softwarekang/knet"
 	"github.com/Softwarekang/knet/connection"
 	kpoll "github.com/Softwarekang/knet/poll"
 )
@@ -17,8 +16,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	knet.PollerManager.SetPollerNums(1)
-	poller := knet.PollerManager.Pick()
+	kpoll.PollerManager.SetPollerNums(1)
+	poller := kpoll.PollerManager.Pick()
 	onRead := func() error {
 		conn, err := listener.Accept()
 		if err != nil {
