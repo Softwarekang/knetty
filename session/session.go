@@ -46,7 +46,7 @@ func (s *session) WritePkg(pkg interface{}) error {
 		return err
 	}
 
-	if _, err := s.Connection.Write(data); err != nil {
+	if err := s.Connection.Write(data); err != nil {
 		return err
 	}
 	return nil

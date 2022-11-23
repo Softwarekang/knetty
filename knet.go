@@ -11,5 +11,6 @@ type PkgCodec interface {
 // EventListener listen for session
 type EventListener interface {
 	OnMessage(pkg interface{}) error
-	OnConnect(session session.Session) error
+	OnConnect(s session.Session) error
+	OnClose(s session.Session) error
 }

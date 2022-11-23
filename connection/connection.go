@@ -41,7 +41,7 @@ type Connection interface {
 	// Read will return length n bytes
 	Read(n int) ([]byte, error)
 	// Write will send bytes to conn
-	Write(bytes []byte) (int, error)
+	Write(bytes []byte) error
 	// SetCloseCallBack set close callback fun when conn on interrupt
 	SetCloseCallBack(fn CloseCallBackFunc)
 	// Len will return conn readable data size
@@ -60,6 +60,7 @@ type kNetConn struct {
 	remoteAddress    string
 	poller           poll.Poll
 	inputBuffer      bytes.Buffer
+	outputBuffer     bytes.Buffer
 	closeCallBackFn  CloseCallBackFunc
 	waitBufferSize   atomic.Int64
 	waitBufferChan   chan struct{}

@@ -133,8 +133,19 @@ func (t *tcpConn) read(n int) ([]byte, error) {
 }
 
 // Write .
-func (t *tcpConn) Write(bytes []byte) (int, error) {
-	return syscall.SendmsgN(t.fd, bytes, nil, t.remoteSocketAddr, 0)
+func (t *tcpConn) Write(bytes []byte) error {
+	n, err := syscall.SendmsgN(t.fd, bytes, nil, t.remoteSocketAddr, 0)
+	if err != nil && err != syscall.EAGAIN {
+		return err
+	}
+
+	if n == len(bytes) {
+		return nil
+	}
+
+	// net buffer is full
+
+	return nil
 }
 
 // Len .
