@@ -10,6 +10,7 @@ type Session interface {
 	SetPkgCodec(codec knet.PkgCodec)
 	SetEventListener(eventListener knet.EventListener)
 	WritePkg(pgk interface{}) error
+	Close() error
 }
 
 type session struct {
@@ -46,8 +47,13 @@ func (s *session) WritePkg(pkg interface{}) error {
 		return err
 	}
 
-	if err := s.Connection.Write(data); err != nil {
+	if err := s.Connection.WriteBuffer(data); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (s *session) Close() error {
+	s.Connection.Close()
 	return nil
 }

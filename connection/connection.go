@@ -40,8 +40,10 @@ type Connection interface {
 	SetWriteTimeout(time.Duration)
 	// Read will return length n bytes
 	Read(n int) ([]byte, error)
-	// Write will send bytes to conn
-	Write(bytes []byte) error
+	// Write will write bytes to conn buffer
+	WriteBuffer(bytes []byte) error
+	// Flush will send conn buffer data to net
+	Flush() error
 	// SetCloseCallBack set close callback fun when conn on interrupt
 	SetCloseCallBack(fn CloseCallBackFunc)
 	// Len will return conn readable data size
@@ -51,34 +53,45 @@ type Connection interface {
 }
 
 type kNetConn struct {
-	id               uint32
-	fd               int
-	readTimeOut      *atomic.Duration
-	writeTimeOut     *atomic.Duration
-	remoteSocketAddr syscall.Sockaddr
-	localAddress     string
-	remoteAddress    string
-	poller           poll.Poll
-	inputBuffer      bytes.Buffer
-	outputBuffer     bytes.Buffer
-	closeCallBackFn  CloseCallBackFunc
-	waitBufferSize   atomic.Int64
-	waitBufferChan   chan struct{}
-	close            atomic.Int32
+	id                 uint32
+	fd                 int
+	readTimeOut        *atomic.Duration
+	writeTimeOut       *atomic.Duration
+	remoteSocketAddr   syscall.Sockaddr
+	localAddress       string
+	remoteAddress      string
+	poller             poll.Poll
+	inputBuffer        bytes.Buffer
+	outputBuffer       bytes.Buffer
+	closeCallBackFn    CloseCallBackFunc
+	waitBufferSize     atomic.Int64
+	netFd              *poll.NetFileDesc
+	writeNetBufferChan chan struct{}
+	waitBufferChan     chan struct{}
+	close              atomic.Int32
 }
 
 // Register register in poller
-func (c *kNetConn) Register() error {
-	if err := c.poller.Register(&poll.NetFileDesc{
+func (c *kNetConn) Register(eventType poll.PollEventType) error {
+	c.initNetFd()
+	if err := c.poller.Register(c.netFd, eventType); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *kNetConn) initNetFd() {
+	if c.netFd != nil {
+		return
+	}
+
+	c.netFd = &poll.NetFileDesc{
 		FD: c.fd,
 		NetPollListener: poll.NetPollListener{
 			OnRead:      c.OnRead,
 			OnInterrupt: c.OnInterrupt,
 		},
-	}, poll.Read); err != nil {
-		return err
 	}
-	return nil
 }
 
 // OnRead refactor for conn
@@ -97,6 +110,16 @@ func (c *kNetConn) OnRead() error {
 	if waitBufferSize > 0 && int64(c.inputBuffer.Len()) > waitBufferSize {
 		c.waitBufferChan <- struct{}{}
 	}
+	return nil
+}
+
+// OnWrite refactor for conn
+func (c *kNetConn) OnWrite() error {
+	_, err := syscall.SendmsgN(c.fd, c.outputBuffer.Bytes(), nil, c.remoteSocketAddr, 0)
+	if err != nil && err != syscall.EAGAIN {
+		return err
+	}
+
 	return nil
 }
 

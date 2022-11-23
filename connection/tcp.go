@@ -36,14 +36,15 @@ func NewTcpConn(conn Conn) *tcpConn {
 	msyscall.SetConnectionNoBlock(conn.FD())
 	return &tcpConn{
 		kNetConn: kNetConn{
-			fd:               conn.FD(),
-			remoteSocketAddr: conn.RemoteSocketAddr(),
-			readTimeOut:      atomic.NewDuration(netIOTimeout),
-			writeTimeOut:     atomic.NewDuration(netIOTimeout),
-			localAddress:     localAddress,
-			remoteAddress:    remoteAddress,
-			poller:           poll.PollerManager.Pick(),
-			waitBufferChan:   make(chan struct{}, 1),
+			fd:                 conn.FD(),
+			remoteSocketAddr:   conn.RemoteSocketAddr(),
+			readTimeOut:        atomic.NewDuration(netIOTimeout),
+			writeTimeOut:       atomic.NewDuration(netIOTimeout),
+			localAddress:       localAddress,
+			remoteAddress:      remoteAddress,
+			poller:             poll.PollerManager.Pick(),
+			waitBufferChan:     make(chan struct{}, 1),
+			writeNetBufferChan: make(chan struct{}, 1),
 		},
 		conn: conn,
 	}
@@ -133,18 +134,33 @@ func (t *tcpConn) read(n int) ([]byte, error) {
 }
 
 // Write .
-func (t *tcpConn) Write(bytes []byte) error {
-	n, err := syscall.SendmsgN(t.fd, bytes, nil, t.remoteSocketAddr, 0)
+func (t *tcpConn) WriteBuffer(bytes []byte) error {
+	_, err := t.outputBuffer.Write(bytes)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Flush .
+func (t *tcpConn) Flush() error {
+	// todo:bug need
+	_, err := syscall.SendmsgN(t.fd, t.outputBuffer.Bytes(), nil, t.remoteSocketAddr, 0)
 	if err != nil && err != syscall.EAGAIN {
 		return err
 	}
 
-	if n == len(bytes) {
+	if t.outputBuffer.Len() == 0 {
 		return nil
 	}
 
 	// net buffer is full
+	if err := t.Register(poll.Write); err != nil {
+		return err
+	}
 
+	<-t.writeNetBufferChan
 	return nil
 }
 
