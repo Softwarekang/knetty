@@ -5,4 +5,4 @@ cover:
 	go test -cover
 
 test:
-	go test -coverprofile=knet_coverage.out
+	go test -coverprofile=knet_coverage.out ./...

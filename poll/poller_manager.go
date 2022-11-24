@@ -1,12 +1,10 @@
-package knet
+package poll
 
 import (
 	"fmt"
 	"log"
 	"math/rand"
 	"runtime"
-
-	"github.com/Softwarekang/knet/poll"
 )
 
 // SetPollerNums set reactor goroutine nums
@@ -24,7 +22,7 @@ func init() {
 
 type pollerManager struct {
 	NumLoops int
-	pollers  []poll.Poll // all the pollers
+	pollers  []Poll // all the pollers
 }
 
 // SetPollerNums setup num for pollers
@@ -34,7 +32,7 @@ func (m *pollerManager) SetPollerNums(n int) error {
 	}
 
 	if n < m.NumLoops {
-		var polls = make([]poll.Poll, n)
+		var polls = make([]Poll, n)
 		for idx := 0; idx < m.NumLoops; idx++ {
 			if idx < n {
 				polls[idx] = m.pollers[idx]
@@ -67,7 +65,7 @@ func (m *pollerManager) Close() error {
 // Run all pollers
 func (m *pollerManager) Run() error {
 	for idx := len(m.pollers); idx < m.NumLoops; idx++ {
-		var poller = poll.NewDefaultPoller()
+		var poller = NewDefaultPoller()
 		m.pollers = append(m.pollers, poller)
 		go poller.Wait()
 	}
@@ -76,6 +74,6 @@ func (m *pollerManager) Run() error {
 }
 
 // Pick rand get a poller
-func (m *pollerManager) Pick() poll.Poll {
+func (m *pollerManager) Pick() Poll {
 	return m.pollers[rand.Intn(m.NumLoops)]
 }

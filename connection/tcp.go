@@ -2,12 +2,14 @@ package connection
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"syscall"
 	"time"
 
-	"github.com/Softwarekang/knet"
+	merr "github.com/Softwarekang/knet/pkg/err"
+	"github.com/Softwarekang/knet/poll"
+	msyscall "github.com/Softwarekang/knet/syscall"
+
 	"go.uber.org/atomic"
 )
 
@@ -31,17 +33,18 @@ func NewTcpConn(conn Conn) *tcpConn {
 	}
 
 	// set conn no block
-	syscall.SetNonblock(conn.FD(), true)
+	msyscall.SetConnectionNoBlock(conn.FD())
 	return &tcpConn{
 		kNetConn: kNetConn{
-			fd:               conn.FD(),
-			remoteSocketAddr: conn.RemoteSocketAddr(),
-			readTimeOut:      atomic.NewDuration(netIOTimeout),
-			writeTimeOut:     atomic.NewDuration(netIOTimeout),
-			localAddress:     localAddress,
-			remoteAddress:    remoteAddress,
-			poller:           knet.PollerManager.Pick(),
-			waitBufferChan:   make(chan struct{}, 1),
+			fd:                 conn.FD(),
+			remoteSocketAddr:   conn.RemoteSocketAddr(),
+			readTimeOut:        atomic.NewDuration(netIOTimeout),
+			writeTimeOut:       atomic.NewDuration(netIOTimeout),
+			localAddress:       localAddress,
+			remoteAddress:      remoteAddress,
+			poller:             poll.PollerManager.Pick(),
+			waitBufferChan:     make(chan struct{}, 1),
+			writeNetBufferChan: make(chan struct{}, 1),
 		},
 		conn: conn,
 	}
@@ -106,12 +109,12 @@ func (t *tcpConn) waitReadBuffer(n int) error {
 	defer cancel()
 	for t.inputBuffer.Len() < n {
 		if !t.isActive() {
-			return fmt.Errorf("waitReadBufferWithTimeout conn is closed")
+			return merr.ConnClosedErr
 		}
 
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("waitReadBufferWithTimeout ctx timeout")
+			return merr.NetIOTimeoutErr
 		case <-t.waitBufferChan:
 			continue
 		}
@@ -127,26 +130,38 @@ func (t *tcpConn) read(n int) ([]byte, error) {
 		return nil, err
 	}
 
-	fmt.Printf("read %d length data from input buffer", n)
 	return data, nil
 }
 
 // Write .
-func (t *tcpConn) Write(bytes []byte) (int, error) {
-	return syscall.SendmsgN(t.fd, bytes, nil, t.remoteSocketAddr, 0)
+func (t *tcpConn) WriteBuffer(bytes []byte) error {
+	_, err := t.outputBuffer.Write(bytes)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func ipToSockaddrInet4(ip net.IP, port int) (*syscall.SockaddrInet4, error) {
-	if len(ip) == 0 {
-		ip = net.IPv4zero
+// Flush .
+func (t *tcpConn) Flush() error {
+	// todo:bug need
+	_, err := syscall.SendmsgN(t.fd, t.outputBuffer.Bytes(), nil, t.remoteSocketAddr, 0)
+	if err != nil && err != syscall.EAGAIN {
+		return err
 	}
-	ip4 := ip.To4()
-	if ip4 == nil {
-		return nil, &net.AddrError{Err: "non-IPv4 address", Addr: ip.String()}
+
+	if t.outputBuffer.Len() == 0 {
+		return nil
 	}
-	sa := &syscall.SockaddrInet4{Port: port}
-	copy(sa.Addr[:], ip4)
-	return sa, nil
+
+	// net buffer is full
+	if err := t.Register(poll.Write); err != nil {
+		return err
+	}
+
+	<-t.writeNetBufferChan
+	return nil
 }
 
 // Len .
@@ -158,7 +173,15 @@ func (t *tcpConn) isActive() bool {
 	return t.close.Load() == 0
 }
 
+// SetCloseCallBack .
+func (t *tcpConn) SetCloseCallBack(fn CloseCallBackFunc) {
+	t.closeCallBackFn = fn
+}
+
 // Close .
 func (t tcpConn) Close() {
+	if !t.isActive() {
+		return
+	}
 	t.OnInterrupt()
 }

@@ -6,7 +6,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/Softwarekang/knet"
 	"github.com/Softwarekang/knet/connection"
 	kpoll "github.com/Softwarekang/knet/poll"
 )
@@ -17,8 +16,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	knet.PollerManager.SetPollerNums(1)
-	poller := knet.PollerManager.Pick()
+	kpoll.PollerManager.SetPollerNums(1)
+	poller := kpoll.PollerManager.Pick()
 	onRead := func() error {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -34,7 +33,7 @@ func main() {
 		}
 
 		tcpConn := connection.NewTcpConn(wrappedConn)
-		if err := tcpConn.Register(); err != nil {
+		if err := tcpConn.Register(kpoll.Read); err != nil {
 			return err
 		}
 
@@ -45,8 +44,10 @@ func main() {
 					log.Fatal(err)
 				}
 				fmt.Println(string(data) + "\n")
-				n, err := tcpConn.Write(data)
-				fmt.Printf("server write length:%v data:%s\n", n, string(data))
+				if err := tcpConn.WriteBuffer(data); err != nil {
+					log.Fatal(err)
+				}
+				fmt.Printf("server write data:%s\n", string(data))
 				time.Sleep(3 * time.Second)
 			}
 
