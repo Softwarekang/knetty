@@ -1,14 +1,13 @@
-package session
+package knet
 
 import (
-	"github.com/Softwarekang/knet"
 	"github.com/Softwarekang/knet/connection"
 )
 
 // Session client、server session
 type Session interface {
-	SetPkgCodec(codec knet.PkgCodec)
-	SetEventListener(eventListener knet.EventListener)
+	SetPkgCodec(codec PkgCodec)
+	SetEventListener(eventListener EventListener)
 	WritePkg(pgk interface{}) error
 	Close() error
 }
@@ -16,9 +15,9 @@ type Session interface {
 type session struct {
 	connection.Connection
 
-	pkgCodec knet.PkgCodec
+	pkgCodec PkgCodec
 
-	eventListener knet.EventListener
+	eventListener EventListener
 }
 
 func NewSession(c connection.Connection) *session {
@@ -27,14 +26,14 @@ func NewSession(c connection.Connection) *session {
 	}
 }
 
-func (s *session) SetPkgCodec(codec knet.PkgCodec) {
+func (s *session) SetPkgCodec(codec PkgCodec) {
 	if codec == nil {
 		panic("session.SetPkgCodec codec is nil")
 	}
 	s.pkgCodec = codec
 }
 
-func (s *session) SetEventListener(eventListener knet.EventListener) {
+func (s *session) SetEventListener(eventListener EventListener) {
 	if eventListener == nil {
 		panic("session.SetEventListener eventListener is nil")
 	}

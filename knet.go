@@ -1,7 +1,5 @@
 package knet
 
-import "github.com/Softwarekang/knet/session"
-
 // PkgCodec codec for session
 type PkgCodec interface {
 	Write(pkg interface{}) ([]byte, error)
@@ -11,6 +9,6 @@ type PkgCodec interface {
 // EventListener listen for session
 type EventListener interface {
 	OnMessage(pkg interface{}) error
-	OnConnect(s session.Session) error
-	OnClose(s session.Session) error
+	OnConnect(s Session) error
+	OnClose(s Session) error
 }
