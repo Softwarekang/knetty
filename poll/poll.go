@@ -3,7 +3,7 @@ package poll
 // Poll net poll interface
 type Poll interface {
 	// Register netFd in the poller. events is the type of event that the poller focus on
-	Register(netFd *NetFileDesc, eventType PollEventType) error
+	Register(netFd *NetFileDesc, eventType EventType) error
 
 	// Wait
 	// poller will focus on all registered netFd, wait for netFd to satisfy the condition and
@@ -41,11 +41,11 @@ type OnWrite func() error
 // OnInterrupt The callback function when the net fd state is interrupt
 type OnInterrupt func() error
 
-// PollEventType event type for poller
-type PollEventType int
+// EventType event type for poller
+type EventType int
 
 const (
-	Read PollEventType = iota + 1
+	Read EventType = iota + 1
 	DeleteRead
 	Write
 	DeleteWrite

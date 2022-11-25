@@ -1,12 +1,12 @@
 package connection
 
 import (
-	"bytes"
-	mnet "github.com/Softwarekang/knet/pkg/net"
 	"net"
 	"syscall"
 	"time"
 
+	"github.com/Softwarekang/knet/pkg/buffer"
+	mnet "github.com/Softwarekang/knet/pkg/net"
 	"github.com/Softwarekang/knet/poll"
 
 	"go.uber.org/atomic"
@@ -40,10 +40,10 @@ type Connection interface {
 	SetWriteTimeout(time.Duration)
 	// Read will return length n bytes
 	Read(n int) ([]byte, error)
-	// Write will write bytes to conn buffer
+	// WriteBuffer will write bytes to conn buffer
 	WriteBuffer(bytes []byte) error
-	// Flush will send conn buffer data to net
-	Flush() error
+	// FlushBuffer will send conn buffer data to net
+	FlushBuffer() error
 	// SetCloseCallBack set close callback fun when conn on interrupt
 	SetCloseCallBack(fn CloseCallBackFunc)
 	// Len will return conn readable data size
@@ -61,8 +61,8 @@ type kNetConn struct {
 	localAddress       string
 	remoteAddress      string
 	poller             poll.Poll
-	inputBuffer        bytes.Buffer
-	outputBuffer       bytes.Buffer
+	inputBuffer        *buffer.ByteBuffer
+	outputBuffer       *buffer.ByteBuffer
 	closeCallBackFn    CloseCallBackFunc
 	waitBufferSize     atomic.Int64
 	netFd              *poll.NetFileDesc
@@ -72,7 +72,7 @@ type kNetConn struct {
 }
 
 // Register register in poller
-func (c *kNetConn) Register(eventType poll.PollEventType) error {
+func (c *kNetConn) Register(eventType poll.EventType) error {
 	c.initNetFd()
 	if err := c.poller.Register(c.netFd, eventType); err != nil {
 		return err
@@ -105,7 +105,9 @@ func (c *kNetConn) OnRead() error {
 		}
 	}
 
-	c.inputBuffer.Write(bytes[:n])
+	if err := c.inputBuffer.Write(bytes[:n]); err != nil {
+		return err
+	}
 	waitBufferSize := c.waitBufferSize.Load()
 	if waitBufferSize > 0 && int64(c.inputBuffer.Len()) > waitBufferSize {
 		c.waitBufferChan <- struct{}{}
@@ -115,11 +117,19 @@ func (c *kNetConn) OnRead() error {
 
 // OnWrite refactor for conn
 func (c *kNetConn) OnWrite() error {
-	_, err := syscall.SendmsgN(c.fd, c.outputBuffer.Bytes(), nil, c.remoteSocketAddr, 0)
+	n, err := syscall.SendmsgN(c.fd, c.outputBuffer.Bytes(), nil, c.remoteSocketAddr, 0)
 	if err != nil && err != syscall.EAGAIN {
 		return err
 	}
 
+	c.outputBuffer.Release(n)
+	if c.outputBuffer.IsEmpty() {
+		if err := c.Register(poll.DeleteWrite); err != nil {
+			return err
+		}
+
+		c.writeNetBufferChan <- struct{}{}
+	}
 	return nil
 }
 
