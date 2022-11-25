@@ -47,6 +47,7 @@ func main() {
 				if err := tcpConn.WriteBuffer(data); err != nil {
 					log.Fatal(err)
 				}
+				tcpConn.FlushBuffer()
 				fmt.Printf("server write data:%s\n", string(data))
 				time.Sleep(3 * time.Second)
 			}

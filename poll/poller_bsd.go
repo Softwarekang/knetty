@@ -30,7 +30,7 @@ func NewDefaultPoller() Poll {
 }
 
 // Register .
-func (k KqueuePoller) Register(netFd *NetFileDesc, eventType PollEventType) error {
+func (k KqueuePoller) Register(netFd *NetFileDesc, eventType EventType) error {
 	var filter int16
 	var flags uint16
 	switch eventType {

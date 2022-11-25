@@ -2,6 +2,7 @@ package connection
 
 import (
 	"context"
+	"github.com/Softwarekang/knet/pkg/buffer"
 	"net"
 	"syscall"
 	"time"
@@ -43,6 +44,8 @@ func NewTcpConn(conn Conn) *tcpConn {
 			localAddress:       localAddress,
 			remoteAddress:      remoteAddress,
 			poller:             poll.PollerManager.Pick(),
+			inputBuffer:        buffer.NewByteBuffer(),
+			outputBuffer:       buffer.NewByteBuffer(),
 			waitBufferChan:     make(chan struct{}, 1),
 			writeNetBufferChan: make(chan struct{}, 1),
 		},
@@ -133,24 +136,19 @@ func (t *tcpConn) read(n int) ([]byte, error) {
 	return data, nil
 }
 
-// Write .
+// WriteBuffer .
 func (t *tcpConn) WriteBuffer(bytes []byte) error {
-	_, err := t.outputBuffer.Write(bytes)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return t.outputBuffer.Write(bytes)
 }
 
-// Flush .
-func (t *tcpConn) Flush() error {
-	// todo:bug need
-	_, err := syscall.SendmsgN(t.fd, t.outputBuffer.Bytes(), nil, t.remoteSocketAddr, 0)
+// FlushBuffer .
+func (t *tcpConn) FlushBuffer() error {
+	n, err := syscall.SendmsgN(t.fd, t.outputBuffer.Bytes(), nil, t.remoteSocketAddr, 0)
 	if err != nil && err != syscall.EAGAIN {
 		return err
 	}
 
+	t.outputBuffer.Release(n)
 	if t.outputBuffer.Len() == 0 {
 		return nil
 	}
