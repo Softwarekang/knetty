@@ -21,7 +21,7 @@ jobs:
         go-version: 1.18
 
     - name: Test
-      run: go test -coverprofile=knet_coverage.out
+      run: go test -coverprofile=knet_coverage.out ./...
 
     - name: UploadCodecov
       uses: codecov/codecov-action@v3
