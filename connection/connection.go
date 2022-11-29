@@ -20,6 +20,13 @@ const (
 	netIOTimeout = time.Second // 1s
 )
 
+type ConnType int
+
+const (
+	TCPCONNECTION ConnType = iota
+	UDPCONNECTION
+)
+
 type CloseCallBackFunc func() error
 
 // Connection some connection  operations
@@ -38,8 +45,10 @@ type Connection interface {
 	WriteTimeout() time.Duration
 	// SetWriteTimeout setup write timeout
 	SetWriteTimeout(time.Duration)
-	// Read will return length n bytes
-	Read(n int) ([]byte, error)
+	// Next will return length n bytes
+	Next(n int) ([]byte, error)
+	// Read will return max len(p) data
+	Read(p []byte) (int, error)
 	// WriteBuffer will write bytes to conn buffer
 	WriteBuffer(bytes []byte) error
 	// FlushBuffer will send conn buffer data to net
@@ -48,6 +57,8 @@ type Connection interface {
 	SetCloseCallBack(fn CloseCallBackFunc)
 	// Len will return conn readable data size
 	Len() int
+	// Type  will return conn type
+	Type() ConnType
 	// Close will interrupt conn
 	Close()
 }

@@ -39,7 +39,7 @@ func main() {
 
 		go func() {
 			for {
-				data, err := tcpConn.Read(10)
+				data, err := tcpConn.Next(10)
 				if err != nil {
 					log.Fatal(err)
 				}

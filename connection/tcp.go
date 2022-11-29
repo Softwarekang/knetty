@@ -2,11 +2,11 @@ package connection
 
 import (
 	"context"
-	"github.com/Softwarekang/knet/pkg/buffer"
 	"net"
 	"syscall"
 	"time"
 
+	"github.com/Softwarekang/knet/pkg/buffer"
 	merr "github.com/Softwarekang/knet/pkg/err"
 	"github.com/Softwarekang/knet/poll"
 	msyscall "github.com/Softwarekang/knet/syscall"
@@ -14,12 +14,12 @@ import (
 	"go.uber.org/atomic"
 )
 
-type tcpConn struct {
+type TcpConn struct {
 	kNetConn
 	conn net.Conn
 }
 
-func NewTcpConn(conn Conn) *tcpConn {
+func NewTcpConn(conn Conn) *TcpConn {
 	if conn == nil {
 		panic("newTcpConn(conn net.Conn):@conn is nil")
 	}
@@ -35,7 +35,7 @@ func NewTcpConn(conn Conn) *tcpConn {
 
 	// set conn no block
 	msyscall.SetConnectionNoBlock(conn.FD())
-	return &tcpConn{
+	return &TcpConn{
 		kNetConn: kNetConn{
 			fd:                 conn.FD(),
 			remoteSocketAddr:   conn.RemoteSocketAddr(),
@@ -53,34 +53,34 @@ func NewTcpConn(conn Conn) *tcpConn {
 	}
 }
 
-func (t tcpConn) ID() uint32 {
+func (t TcpConn) ID() uint32 {
 	return t.id
 }
 
-func (t tcpConn) LocalAddr() string {
+func (t TcpConn) LocalAddr() string {
 	return t.localAddress
 }
 
-func (t tcpConn) RemoteAddr() string {
+func (t TcpConn) RemoteAddr() string {
 	return t.remoteAddress
 }
 
-func (t tcpConn) ReadTimeout() time.Duration {
+func (t TcpConn) ReadTimeout() time.Duration {
 	return t.readTimeOut.Load()
 }
 
-func (t tcpConn) SetReadTimeout(rTimeout time.Duration) {
+func (t TcpConn) SetReadTimeout(rTimeout time.Duration) {
 	if rTimeout < 1 {
 		panic("SetReadTimeout(rTimeout time.Duration):@rTimeout < 0")
 	}
 	t.readTimeOut = atomic.NewDuration(rTimeout)
 }
 
-func (t tcpConn) WriteTimeout() time.Duration {
+func (t TcpConn) WriteTimeout() time.Duration {
 	return t.writeTimeOut.Load()
 }
 
-func (t tcpConn) SetWriteTimeout(wTimeout time.Duration) {
+func (t TcpConn) SetWriteTimeout(wTimeout time.Duration) {
 	if wTimeout < 1 {
 		panic("SetWriteTimeout(wTimeout time.Duration):@wTimeout < 0")
 	}
@@ -88,16 +88,26 @@ func (t tcpConn) SetWriteTimeout(wTimeout time.Duration) {
 	t.writeTimeOut = atomic.NewDuration(wTimeout)
 }
 
-// Read .
-func (t *tcpConn) Read(n int) ([]byte, error) {
+// Next .
+func (t *TcpConn) Next(n int) ([]byte, error) {
 	if err := t.waitReadBuffer(n); err != nil {
 		return nil, err
 	}
 
-	return t.read(n)
+	p := make([]byte, n)
+	if _, err := t.read(p); err != nil {
+		return nil, err
+	}
+
+	return p, nil
 }
 
-func (t *tcpConn) waitReadBuffer(n int) error {
+// Read .
+func (t *TcpConn) Read(p []byte) (int, error) {
+	return t.read(p)
+}
+
+func (t *TcpConn) waitReadBuffer(n int) error {
 	if t.inputBuffer.Len() >= n {
 		return nil
 	}
@@ -126,23 +136,17 @@ func (t *tcpConn) waitReadBuffer(n int) error {
 	return nil
 }
 
-func (t *tcpConn) read(n int) ([]byte, error) {
-	data := make([]byte, n)
-	n, err := t.inputBuffer.Read(data)
-	if err != nil {
-		return nil, err
-	}
-
-	return data, nil
+func (t *TcpConn) read(p []byte) (int, error) {
+	return t.inputBuffer.Read(p)
 }
 
 // WriteBuffer .
-func (t *tcpConn) WriteBuffer(bytes []byte) error {
+func (t *TcpConn) WriteBuffer(bytes []byte) error {
 	return t.outputBuffer.Write(bytes)
 }
 
 // FlushBuffer .
-func (t *tcpConn) FlushBuffer() error {
+func (t *TcpConn) FlushBuffer() error {
 	n, err := syscall.SendmsgN(t.fd, t.outputBuffer.Bytes(), nil, t.remoteSocketAddr, 0)
 	if err != nil && err != syscall.EAGAIN {
 		return err
@@ -163,23 +167,28 @@ func (t *tcpConn) FlushBuffer() error {
 }
 
 // Len .
-func (t *tcpConn) Len() int {
+func (t *TcpConn) Len() int {
 	return t.inputBuffer.Len()
 }
 
-func (t *tcpConn) isActive() bool {
+func (t *TcpConn) isActive() bool {
 	return t.close.Load() == 0
 }
 
 // SetCloseCallBack .
-func (t *tcpConn) SetCloseCallBack(fn CloseCallBackFunc) {
+func (t *TcpConn) SetCloseCallBack(fn CloseCallBackFunc) {
 	t.closeCallBackFn = fn
 }
 
 // Close .
-func (t tcpConn) Close() {
+func (t *TcpConn) Close() {
 	if !t.isActive() {
 		return
 	}
 	t.OnInterrupt()
+}
+
+// Type .
+func (t *TcpConn) Type() ConnType {
+	return TCPCONNECTION
 }
