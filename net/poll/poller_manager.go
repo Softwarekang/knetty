@@ -7,11 +7,6 @@ import (
 	"runtime"
 )
 
-// SetPollerNums set reactor goroutine nums
-func SetPollerNums(n int) error {
-	return PollerManager.SetPollerNums(n)
-}
-
 var PollerManager *pollerManager
 
 func init() {

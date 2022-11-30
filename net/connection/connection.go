@@ -5,9 +5,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Softwarekang/knet/net/poll"
 	"github.com/Softwarekang/knet/pkg/buffer"
 	mnet "github.com/Softwarekang/knet/pkg/net"
-	"github.com/Softwarekang/knet/poll"
 
 	"go.uber.org/atomic"
 )
