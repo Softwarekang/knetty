@@ -2,11 +2,10 @@ package main
 
 import (
 	"fmt"
+	poll2 "github.com/Softwarekang/knet/net/poll"
 	"log"
 	"net"
 	"syscall"
-
-	kpoll "github.com/Softwarekang/knet/poll"
 )
 
 func main() {
@@ -20,7 +19,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	poller := kpoll.NewDefaultPoller()
+	poller := poll2.NewDefaultPoller()
 	listenerFD := int(file.Fd())
 	onRead := func() error {
 		nfd, stockade, err := syscall.Accept(listenerFD)
@@ -35,9 +34,9 @@ func main() {
 		}
 
 		fmt.Printf("server %s get accept new client conn:%v \n", listener.Addr().String(), tcpAddr.String())
-		if err := poller.Register(&kpoll.NetFileDesc{
+		if err := poller.Register(&poll2.NetFileDesc{
 			FD: nfd,
-			NetPollListener: kpoll.NetPollListener{
+			NetPollListener: poll2.NetPollListener{
 				OnRead: func() error {
 					buf := make([]byte, 4)
 					n, err := syscall.Read(nfd, buf)
@@ -49,23 +48,23 @@ func main() {
 					return nil
 				}, OnInterrupt: func() error {
 					fmt.Printf("client conn %s closed\n", tcpAddr.String())
-					return poller.Register(&kpoll.NetFileDesc{
+					return poller.Register(&poll2.NetFileDesc{
 						FD: nfd,
-					}, kpoll.DeleteRead)
+					}, poll2.DeleteRead)
 				},
 			},
-		}, kpoll.Read); err != nil {
+		}, poll2.Read); err != nil {
 			return err
 		}
 		return nil
 	}
 
-	if err = poller.Register(&kpoll.NetFileDesc{
+	if err = poller.Register(&poll2.NetFileDesc{
 		FD: listenerFD,
-		NetPollListener: kpoll.NetPollListener{
+		NetPollListener: poll2.NetPollListener{
 			OnRead: onRead,
 		},
-	}, kpoll.Read); err != nil {
+	}, poll2.Read); err != nil {
 		log.Fatal(err)
 	}
 

@@ -1,11 +1,12 @@
-package knet
+package session
 
 import (
 	"errors"
-	"go.uber.org/atomic"
 
-	"github.com/Softwarekang/knet/connection"
+	"github.com/Softwarekang/knet/net/connection"
 	"github.com/Softwarekang/knet/pkg/buffer"
+
+	"go.uber.org/atomic"
 )
 
 const (

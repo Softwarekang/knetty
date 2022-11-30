@@ -6,8 +6,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/Softwarekang/knet/connection"
-	kpoll "github.com/Softwarekang/knet/poll"
+	"github.com/Softwarekang/knet/net/connection"
+	kpoll "github.com/Softwarekang/knet/net/poll"
 )
 
 func main() {

@@ -6,10 +6,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Softwarekang/knet/net/poll"
 	"github.com/Softwarekang/knet/pkg/buffer"
 	merr "github.com/Softwarekang/knet/pkg/err"
-	"github.com/Softwarekang/knet/poll"
-	msyscall "github.com/Softwarekang/knet/syscall"
+	msyscall "github.com/Softwarekang/knet/pkg/syscall"
 
 	"go.uber.org/atomic"
 )
