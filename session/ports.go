@@ -16,11 +16,11 @@ type Codec interface {
 // EventListener listen for session
 type EventListener interface {
 	// OnMessage runs when the session gets a pkg
-	OnMessage(s Session, pkg interface{}) error
+	OnMessage(s Session, pkg interface{})
 	// OnConnect runs when the connection initialized
-	OnConnect(s Session) error
+	OnConnect(s Session)
 	// OnClose runs before the session closed
-	OnClose(s Session) error
+	OnClose(s Session)
 	// OnError runs when the session err
-	OnError(s Session) error
+	OnError(s Session, e error)
 }
