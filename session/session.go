@@ -15,7 +15,9 @@ const (
 
 // Session client、server session
 type Session interface {
+	LocalAddr() string
 	SetCodec(codec Codec)
+	RemoteAddr() string
 	SetEventListener(eventListener EventListener)
 	WritePkg(pkg interface{}) error
 	Close() error
@@ -71,10 +73,7 @@ func (s *session) Run() error {
 		return errors.New("session eventListener is nil")
 	}
 
-	if err := s.eventListener.OnConnect(s); err != nil {
-		return err
-	}
-
+	s.eventListener.OnConnect(s)
 	return s.handlePkg()
 }
 
@@ -82,7 +81,7 @@ func (s *session) handlePkg() error {
 	var err error
 	defer func() {
 		if err != nil {
-			s.eventListener.OnError(s)
+			s.eventListener.OnError(s, err)
 		}
 	}()
 	if s.Connection == nil {
@@ -137,6 +136,15 @@ func (s *session) handleTcpPkg() error {
 func (s *session) isActive() bool {
 	return s.close.Load() == 0
 }
+
+func (s *session) LocalAddr() string {
+	return s.Connection.LocalAddr()
+}
+
+func (s *session) RemoteAddr() string {
+	return s.Connection.RemoteAddr()
+}
+
 func (s *session) Close() error {
 	s.eventListener.OnClose(s)
 	s.close.Store(1)
