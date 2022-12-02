@@ -53,34 +53,34 @@ func NewTcpConn(conn Conn) *TcpConn {
 	}
 }
 
-func (t TcpConn) ID() uint32 {
+func (t *TcpConn) ID() uint32 {
 	return t.id
 }
 
-func (t TcpConn) LocalAddr() string {
+func (t *TcpConn) LocalAddr() string {
 	return t.localAddress
 }
 
-func (t TcpConn) RemoteAddr() string {
+func (t *TcpConn) RemoteAddr() string {
 	return t.remoteAddress
 }
 
-func (t TcpConn) ReadTimeout() time.Duration {
+func (t *TcpConn) ReadTimeout() time.Duration {
 	return t.readTimeOut.Load()
 }
 
-func (t TcpConn) SetReadTimeout(rTimeout time.Duration) {
+func (t *TcpConn) SetReadTimeout(rTimeout time.Duration) {
 	if rTimeout < 1 {
 		panic("SetReadTimeout(rTimeout time.Duration):@rTimeout < 0")
 	}
 	t.readTimeOut = atomic.NewDuration(rTimeout)
 }
 
-func (t TcpConn) WriteTimeout() time.Duration {
+func (t *TcpConn) WriteTimeout() time.Duration {
 	return t.writeTimeOut.Load()
 }
 
-func (t TcpConn) SetWriteTimeout(wTimeout time.Duration) {
+func (t *TcpConn) SetWriteTimeout(wTimeout time.Duration) {
 	if wTimeout < 1 {
 		panic("SetWriteTimeout(wTimeout time.Duration):@wTimeout < 0")
 	}
@@ -137,7 +137,17 @@ func (t *TcpConn) waitReadBuffer(n int) error {
 }
 
 func (t *TcpConn) read(p []byte) (int, error) {
-	return t.inputBuffer.Read(p)
+	for {
+		if !t.isActive() {
+			return 0, merr.ConnClosedErr
+		}
+		if t.inputBuffer.Len() == 0 {
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		return t.inputBuffer.Read(p)
+	}
 }
 
 // WriteBuffer .

@@ -2,6 +2,7 @@ package session
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/Softwarekang/knet/net/connection"
 	"github.com/Softwarekang/knet/pkg/buffer"
@@ -33,9 +34,11 @@ type session struct {
 }
 
 func NewSession(c connection.Connection) *session {
-	return &session{
+	s := &session{
 		Connection: c,
 	}
+	s.Connection.SetCloseCallBack(s.onClose)
+	return s
 }
 
 func (s *session) SetCodec(codec Codec) {
@@ -106,30 +109,33 @@ func (s *session) handleTcpPkg() error {
 	buf := buffer.NewByteBuffer()
 	for {
 		if !s.isActive() {
+			fmt.Println("session closed")
 			return nil
 		}
 
 		p := make([]byte, onceReadBufferSize)
-		if _, err := s.Connection.Read(p); err != nil {
-			return err
-		}
-
-		if err := buf.Write(p); err != nil {
-			return err
-		}
-
-		pkg, pkgLen, err := s.pkgCodec.Decode(buf.Bytes())
+		pkgLen, err := s.Connection.Read(p)
 		if err != nil {
 			return err
 		}
 
-		if pkg == nil {
-			continue
+		if err := buf.Write(p[:pkgLen]); err != nil {
+			return err
 		}
 
-		buf.Release(pkgLen)
+		for buf.Len() > 0 {
+			pkg, pkgLen, err := s.pkgCodec.Decode(buf.Bytes())
+			if err != nil {
+				return err
+			}
 
-		s.eventListener.OnMessage(s, pkg)
+			if pkg == nil {
+				break
+			}
+
+			s.eventListener.OnMessage(s, pkg)
+			buf.Release(pkgLen)
+		}
 	}
 }
 
@@ -146,8 +152,13 @@ func (s *session) RemoteAddr() string {
 }
 
 func (s *session) Close() error {
+	s.Connection.Close()
+	s.onClose()
+	return nil
+}
+
+func (s *session) onClose() error {
 	s.eventListener.OnClose(s)
 	s.close.Store(1)
-	s.Connection.Close()
 	return nil
 }
