@@ -19,6 +19,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("send length:%d", n)
+	fmt.Printf("send length:%d\n", n)
 	time.Sleep(5 * time.Second)
 }
