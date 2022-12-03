@@ -1,3 +1,4 @@
+// Package err wrapped err for knet
 package err
 
 // KNetErr wrapped err for net

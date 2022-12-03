@@ -1,3 +1,4 @@
+// Package connection  implements tcp, udp and other protocols for network connection
 package connection
 
 import (
@@ -12,21 +13,21 @@ import (
 	"go.uber.org/atomic"
 )
 
-var (
-	connID atomic.Uint32
-)
-
 const (
+	// default timeout for net io
 	netIOTimeout = time.Second // 1s
 )
 
 type ConnType int
 
+// define tcp、upd、webSocket conn
 const (
 	TCPCONNECTION ConnType = iota
 	UDPCONNECTION
+	WEBSOCKETCONNECTION
 )
 
+// CloseCallBackFunc will runs at conn on Interrupt
 type CloseCallBackFunc func() error
 
 // Connection some connection  operations

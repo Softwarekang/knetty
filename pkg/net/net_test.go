@@ -1,10 +1,11 @@
 package net
 
 import (
-	"github.com/stretchr/testify/assert"
 	"net"
 	"syscall"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIPToSockAddrInet4(t *testing.T) {

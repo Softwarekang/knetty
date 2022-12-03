@@ -2,6 +2,8 @@ package buffer
 
 import (
 	"errors"
+
+	"github.com/Softwarekang/knet/pkg/math"
 )
 
 const (
@@ -10,11 +12,13 @@ const (
 	maxBufferSize = 512 * mb
 )
 
+// ByteBuffer buffer for byte
 type ByteBuffer struct {
 	buf []byte
 	len int
 }
 
+// NewByteBuffer .
 func NewByteBuffer() *ByteBuffer {
 	return newByteBuffer(0)
 }
@@ -50,6 +54,11 @@ func (b *ByteBuffer) Write(data []byte) error {
 	return nil
 }
 
+/*
+	tryGrowSlice expand the cache capacity when it is insufficient
+	When the buffer capacity is less than 1mb, each buffer amplification is doubled, that is, newCap = 2*oldCap.
+	When the buffer capacity exceeds 1mb, the buffer is amplified by 1mb each time, that is, newCap = oldCap + 1mb.
+*/
 func (b *ByteBuffer) tryGrowSlice(n int) error {
 	newCap := n + b.len
 	if newCap < cap(b.buf) {
@@ -76,6 +85,7 @@ func (b *ByteBuffer) tryGrowSlice(n int) error {
 	return nil
 }
 
+// Read .
 func (b *ByteBuffer) Read(data []byte) (int, error) {
 	if len(data) == 0 || b.len == 0 {
 		return 0, nil
@@ -83,46 +93,44 @@ func (b *ByteBuffer) Read(data []byte) (int, error) {
 
 	n := copy(data, b.buf[:b.len])
 	b.buf = b.buf[n:]
-	b.len = max(b.len-n, 0)
+	b.len = math.Max(b.len-n, 0)
 	return n, nil
 }
 
+// Bytes .
 func (b *ByteBuffer) Bytes() []byte {
 	return b.buf[:b.len]
 }
 
+// Len .
 func (b *ByteBuffer) Len() int {
 	return b.len
 }
 
+// WriteString .
 func (b *ByteBuffer) WriteString(s string) error {
 	return b.Write([]byte(s))
 }
 
+// IsEmpty .
 func (b *ByteBuffer) IsEmpty() bool {
 	return b.len == 0
 }
 
+// Release .
 func (b *ByteBuffer) Release(n int) {
 	if cap(b.buf) < n {
 		b.Clear()
 		return
 	}
 
-	b.len = max(b.len-n, 0)
+	b.len = math.Max(b.len-n, 0)
 	b.buf = b.buf[n:]
 	return
 }
 
+// Clear .
 func (b *ByteBuffer) Clear() {
 	b.buf = nil
 	b.len = 0
-}
-
-func max(a, b int) int {
-	if a < b {
-		return b
-	}
-
-	return a
 }

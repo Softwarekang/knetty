@@ -14,11 +14,13 @@ import (
 	"go.uber.org/atomic"
 )
 
+// TcpConn tcp conn in Knet, impl Connection
 type TcpConn struct {
 	kNetConn
 	conn net.Conn
 }
 
+// NewTcpConn .
 func NewTcpConn(conn Conn) *TcpConn {
 	if conn == nil {
 		panic("newTcpConn(conn net.Conn):@conn is nil")
@@ -34,7 +36,7 @@ func NewTcpConn(conn Conn) *TcpConn {
 	}
 
 	// set conn no block
-	msyscall.SetConnectionNoBlock(conn.FD())
+	_ = msyscall.SetConnectionNoBlock(conn.FD())
 	return &TcpConn{
 		kNetConn: kNetConn{
 			fd:                 conn.FD(),
@@ -53,22 +55,27 @@ func NewTcpConn(conn Conn) *TcpConn {
 	}
 }
 
+// ID .
 func (t *TcpConn) ID() uint32 {
 	return t.id
 }
 
+// LocalAddr .
 func (t *TcpConn) LocalAddr() string {
 	return t.localAddress
 }
 
+// RemoteAddr .
 func (t *TcpConn) RemoteAddr() string {
 	return t.remoteAddress
 }
 
+// ReadTimeout .
 func (t *TcpConn) ReadTimeout() time.Duration {
 	return t.readTimeOut.Load()
 }
 
+// SetReadTimeout .
 func (t *TcpConn) SetReadTimeout(rTimeout time.Duration) {
 	if rTimeout < 1 {
 		panic("SetReadTimeout(rTimeout time.Duration):@rTimeout < 0")
@@ -76,10 +83,12 @@ func (t *TcpConn) SetReadTimeout(rTimeout time.Duration) {
 	t.readTimeOut = atomic.NewDuration(rTimeout)
 }
 
+// WriteTimeout .
 func (t *TcpConn) WriteTimeout() time.Duration {
 	return t.writeTimeOut.Load()
 }
 
+// SetWriteTimeout .
 func (t *TcpConn) SetWriteTimeout(wTimeout time.Duration) {
 	if wTimeout < 1 {
 		panic("SetWriteTimeout(wTimeout time.Duration):@wTimeout < 0")
@@ -195,7 +204,9 @@ func (t *TcpConn) Close() {
 	if !t.isActive() {
 		return
 	}
-	t.OnInterrupt()
+	if err := t.OnInterrupt(); err != nil {
+		return
+	}
 }
 
 // Type .

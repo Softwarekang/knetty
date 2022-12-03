@@ -1,3 +1,4 @@
+// Package session for kNet
 package session
 
 import (
@@ -153,8 +154,7 @@ func (s *session) RemoteAddr() string {
 
 func (s *session) Close() error {
 	s.Connection.Close()
-	s.onClose()
-	return nil
+	return s.onClose()
 }
 
 func (s *session) onClose() error {
