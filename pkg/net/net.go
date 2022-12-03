@@ -1,3 +1,4 @@
+// Package net general net func
 package net
 
 import (

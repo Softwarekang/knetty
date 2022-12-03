@@ -1,3 +1,4 @@
+// Package knet .
 package knet
 
 import "github.com/Softwarekang/knet/net/poll"

@@ -1,3 +1,4 @@
+// Package syscall wrapped syscall for kNet
 package syscall
 
 import "syscall"

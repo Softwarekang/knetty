@@ -1,3 +1,4 @@
+// Package poll impl io multiplexing on different systems
 package poll
 
 // Poll net poll interface

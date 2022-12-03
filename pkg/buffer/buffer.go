@@ -1,3 +1,4 @@
+// Package buffer local network cache
 package buffer
 
 // Buffer net in out data buffer
