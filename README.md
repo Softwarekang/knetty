@@ -6,4 +6,4 @@ Knet is a high-performance, asynchronous io network library focused on RPC webso
 
 Support tcp、udp、websocket protocol.
 
-Is similar to Netty.
+used is similar to Netty.
