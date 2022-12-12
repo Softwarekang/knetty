@@ -26,13 +26,11 @@ func main() {
 		}
 
 		fmt.Printf("server %s get accept new client conn:%v \n", conn.LocalAddr().String(), conn.RemoteAddr().String())
-		wrappedConn, err := connection.NewWrappedConn(conn)
+
+		tcpConn, err := connection.NewTcpConn(conn)
 		if err != nil {
-			log.Fatal(err)
 			return err
 		}
-
-		tcpConn := connection.NewTcpConn(wrappedConn)
 		if err := tcpConn.Register(kpoll.Read); err != nil {
 			return err
 		}
