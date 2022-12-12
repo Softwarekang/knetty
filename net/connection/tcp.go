@@ -2,6 +2,7 @@ package connection
 
 import (
 	"context"
+	mnet "github.com/Softwarekang/knet/pkg/net"
 	"net"
 	"syscall"
 	"time"
@@ -21,7 +22,7 @@ type TcpConn struct {
 }
 
 // NewTcpConn .
-func NewTcpConn(conn Conn) *TcpConn {
+func NewTcpConn(conn net.Conn) (*TcpConn, error) {
 	if conn == nil {
 		panic("newTcpConn(conn net.Conn):@conn is nil")
 	}
@@ -35,12 +36,24 @@ func NewTcpConn(conn Conn) *TcpConn {
 		remoteAddress = conn.RemoteAddr().String()
 	}
 
+	tcpConn := conn.(*net.TCPConn)
+	file, err := tcpConn.File()
+	if err != nil {
+		return nil, err
+	}
+
+	tcpAddr := conn.RemoteAddr().(*net.TCPAddr)
+	remoteSocketAdder, err := mnet.IPToSockAddrInet4(tcpAddr.IP, tcpAddr.Port)
+	if err != nil {
+		return nil, err
+	}
+
 	// set conn no block
-	_ = msyscall.SetConnectionNoBlock(conn.FD())
+	_ = msyscall.SetConnectionNoBlock(int(file.Fd()))
 	return &TcpConn{
 		kNetConn: kNetConn{
-			fd:                 conn.FD(),
-			remoteSocketAddr:   conn.RemoteSocketAddr(),
+			fd:                 int(file.Fd()),
+			remoteSocketAddr:   remoteSocketAdder,
 			readTimeOut:        atomic.NewDuration(netIOTimeout),
 			writeTimeOut:       atomic.NewDuration(netIOTimeout),
 			localAddress:       localAddress,
@@ -52,7 +65,7 @@ func NewTcpConn(conn Conn) *TcpConn {
 			writeNetBufferChan: make(chan struct{}, 1),
 		},
 		conn: conn,
-	}
+	}, nil
 }
 
 // ID .

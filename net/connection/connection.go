@@ -2,14 +2,11 @@
 package connection
 
 import (
-	"net"
 	"syscall"
 	"time"
 
 	"github.com/Softwarekang/knet/net/poll"
 	"github.com/Softwarekang/knet/pkg/buffer"
-	mnet "github.com/Softwarekang/knet/pkg/net"
-
 	"go.uber.org/atomic"
 )
 
@@ -158,52 +155,4 @@ func (c *kNetConn) OnInterrupt() error {
 	}
 	c.close.Store(1)
 	return nil
-}
-
-// Conn wrapped net.conn with fd、remote sa
-type Conn interface {
-	net.Conn
-
-	// FD will return conn fd
-	FD() int
-
-	// RemoteSocketAddr will return conn remote sa
-	RemoteSocketAddr() syscall.Sockaddr
-}
-
-type wrappedConn struct {
-	net.Conn
-	remoteSocketAddr syscall.Sockaddr
-	fd               int
-}
-
-// NewWrappedConn .
-func NewWrappedConn(conn net.Conn) (*wrappedConn, error) {
-	tcpConn := conn.(*net.TCPConn)
-	file, err := tcpConn.File()
-	if err != nil {
-		return nil, err
-	}
-
-	tcpAddr := conn.RemoteAddr().(*net.TCPAddr)
-	remoteSocketAdder, err := mnet.IPToSockAddrInet4(tcpAddr.IP, tcpAddr.Port)
-	if err != nil {
-		panic("")
-	}
-
-	return &wrappedConn{
-		Conn:             conn,
-		fd:               int(file.Fd()),
-		remoteSocketAddr: remoteSocketAdder,
-	}, nil
-}
-
-// FD .
-func (w *wrappedConn) FD() int {
-	return w.fd
-}
-
-// RemoteSocketAddr .
-func (w *wrappedConn) RemoteSocketAddr() syscall.Sockaddr {
-	return w.remoteSocketAddr
 }

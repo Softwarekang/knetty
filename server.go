@@ -2,11 +2,13 @@ package knet
 
 import (
 	"fmt"
-	"github.com/Softwarekang/knet/net/poll"
-	"github.com/Softwarekang/knet/session"
-	"go.uber.org/atomic"
+	"log"
 	"net"
 	"net/netip"
+
+	"github.com/Softwarekang/knet/net/connection"
+	"github.com/Softwarekang/knet/net/poll"
+	"github.com/Softwarekang/knet/session"
 )
 
 // Server for kNet
@@ -14,9 +16,8 @@ type Server struct {
 	ServerOptions
 
 	tcpListener net.Listener
-	session     session.Session
 	poller      poll.Poll
-	close       atomic.Bool
+	close       chan struct{}
 }
 
 /*
@@ -28,6 +29,7 @@ type Server struct {
 func NewServer(network, address string, opts ...ServerOption) *Server {
 	s := &Server{
 		poller: poll.PollerManager.Pick(),
+		close:  make(chan struct{}),
 	}
 	opts = append(opts, withServerNetwork(network), withServerAddress(address))
 	for _, opt := range opts {
@@ -68,9 +70,63 @@ func (s *Server) listenTcp() error {
 	}
 
 	s.tcpListener, s.address = streamListener, streamListener.Addr().String()
+	file, err := streamListener.(*net.TCPListener).File()
+	if err != nil {
+		return err
+	}
+
+	if err := s.poller.Register(&poll.NetFileDesc{
+		FD: int(file.Fd()),
+		NetPollListener: poll.NetPollListener{
+			OnRead: s.onRead,
+		},
+	}, poll.Read); err != nil {
+		return err
+	}
+
+	s.waitQuit()
 	return nil
 }
 
-func (s *Server) accept() error {
+func (s *Server) onRead() error {
+	netConn, err := s.tcpListener.Accept()
+	if err != nil {
+		return err
+	}
+
+	tcpConn, err := connection.NewTcpConn(netConn)
+	if err != nil {
+		return err
+	}
+
+	if err := tcpConn.Register(poll.Read); err != nil {
+		return err
+	}
+
+	newSession := session.NewSession(tcpConn)
+	if err := s.newSession(newSession); err != nil {
+		return err
+	}
+
+	go func() {
+		if err := newSession.Run(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
 	return nil
+}
+
+func (s *Server) waitQuit() {
+	<-s.close
+}
+
+// Close stop server
+func (s *Server) Close() error {
+	close(s.close)
+	if err := s.tcpListener.Close(); err != nil {
+		return err
+	}
+
+	return s.poller.Close()
 }
