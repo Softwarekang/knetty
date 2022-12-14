@@ -2,22 +2,22 @@ package connection
 
 import (
 	"context"
-	mnet "github.com/Softwarekang/knet/pkg/net"
+	mnet "github.com/Softwarekang/knetty/pkg/net"
 	"net"
 	"syscall"
 	"time"
 
-	"github.com/Softwarekang/knet/net/poll"
-	"github.com/Softwarekang/knet/pkg/buffer"
-	merr "github.com/Softwarekang/knet/pkg/err"
-	msyscall "github.com/Softwarekang/knet/pkg/syscall"
+	"github.com/Softwarekang/knetty/net/poll"
+	"github.com/Softwarekang/knetty/pkg/buffer"
+	merr "github.com/Softwarekang/knetty/pkg/err"
+	msyscall "github.com/Softwarekang/knetty/pkg/syscall"
 
 	"go.uber.org/atomic"
 )
 
-// TcpConn tcp conn in Knet, impl Connection
+// TcpConn tcp conn in knetty, impl Connection
 type TcpConn struct {
-	kNetConn
+	knettyConn
 	conn net.Conn
 }
 
@@ -51,7 +51,7 @@ func NewTcpConn(conn net.Conn) (*TcpConn, error) {
 	// set conn no block
 	_ = msyscall.SetConnectionNoBlock(int(file.Fd()))
 	return &TcpConn{
-		kNetConn: kNetConn{
+		knettyConn: knettyConn{
 			fd:                 int(file.Fd()),
 			remoteSocketAddr:   remoteSocketAdder,
 			readTimeOut:        atomic.NewDuration(netIOTimeout),

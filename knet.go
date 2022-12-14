@@ -1,7 +1,7 @@
-// Package knet .
-package knet
+// Package knetty .
+package knetty
 
-import "github.com/Softwarekang/knet/net/poll"
+import "github.com/Softwarekang/knetty/net/poll"
 
 // SetPollerNums set reactor goroutine nums
 func SetPollerNums(n int) error {

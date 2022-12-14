@@ -5,8 +5,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Softwarekang/knet/net/poll"
-	"github.com/Softwarekang/knet/pkg/buffer"
+	"github.com/Softwarekang/knetty/net/poll"
+	"github.com/Softwarekang/knetty/pkg/buffer"
 	"go.uber.org/atomic"
 )
 
@@ -61,7 +61,7 @@ type Connection interface {
 	Close()
 }
 
-type kNetConn struct {
+type knettyConn struct {
 	id                 uint32
 	fd                 int
 	readTimeOut        *atomic.Duration
@@ -81,7 +81,7 @@ type kNetConn struct {
 }
 
 // Register register in poller
-func (c *kNetConn) Register(eventType poll.EventType) error {
+func (c *knettyConn) Register(eventType poll.EventType) error {
 	c.initNetFd()
 	if err := c.poller.Register(c.netFd, eventType); err != nil {
 		return err
@@ -89,7 +89,7 @@ func (c *kNetConn) Register(eventType poll.EventType) error {
 	return nil
 }
 
-func (c *kNetConn) initNetFd() {
+func (c *knettyConn) initNetFd() {
 	if c.netFd != nil {
 		return
 	}
@@ -104,7 +104,7 @@ func (c *kNetConn) initNetFd() {
 }
 
 // OnRead refactor for conn
-func (c *kNetConn) OnRead() error {
+func (c *knettyConn) OnRead() error {
 	// 0.25m bytes
 	bytes := make([]byte, 256)
 	n, err := syscall.Read(c.fd, bytes)
@@ -125,7 +125,7 @@ func (c *kNetConn) OnRead() error {
 }
 
 // OnWrite refactor for conn
-func (c *kNetConn) OnWrite() error {
+func (c *knettyConn) OnWrite() error {
 	n, err := syscall.SendmsgN(c.fd, c.outputBuffer.Bytes(), nil, c.remoteSocketAddr, 0)
 	if err != nil && err != syscall.EAGAIN {
 		return err
@@ -143,7 +143,7 @@ func (c *kNetConn) OnWrite() error {
 }
 
 // OnInterrupt refactor for conn
-func (c *kNetConn) OnInterrupt() error {
+func (c *knettyConn) OnInterrupt() error {
 	if err := c.poller.Register(&poll.NetFileDesc{
 		FD: c.fd,
 	}, poll.DeleteRead); err != nil {

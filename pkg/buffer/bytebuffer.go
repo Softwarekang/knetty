@@ -3,7 +3,7 @@ package buffer
 import (
 	"errors"
 
-	"github.com/Softwarekang/knet/pkg/math"
+	"github.com/Softwarekang/knetty/pkg/math"
 )
 
 const (

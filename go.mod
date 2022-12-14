@@ -1,4 +1,4 @@
-module github.com/Softwarekang/knet
+module github.com/Softwarekang/knetty
 
 go 1.18
 

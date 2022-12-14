@@ -1,8 +1,8 @@
-// Package err wrapped err for knet
+// Package err wrapped err for knetty
 package err
 
-// KNetErr wrapped err for net
-type KNetErr interface {
+// knettyErr wrapped err for net
+type knettyErr interface {
 	error
 
 	// TimeoutError if an error is caused by a timeout will return true
