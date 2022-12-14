@@ -1,6 +1,7 @@
 package knet
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -121,8 +122,8 @@ func (s *Server) waitQuit() {
 	<-s.close
 }
 
-// Close stop server
-func (s *Server) Close() error {
+// Shutdown stop server
+func (s *Server) Shutdown(ctx context.Context) error {
 	close(s.close)
 	if err := s.tcpListener.Close(); err != nil {
 		return err
