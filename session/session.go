@@ -1,12 +1,12 @@
-// Package session for kNet
+// Package session for knetty
 package session
 
 import (
 	"errors"
 	"fmt"
 
-	"github.com/Softwarekang/knet/net/connection"
-	"github.com/Softwarekang/knet/pkg/buffer"
+	"github.com/Softwarekang/knetty/net/connection"
+	"github.com/Softwarekang/knetty/pkg/buffer"
 
 	"go.uber.org/atomic"
 )

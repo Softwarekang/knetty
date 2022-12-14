@@ -1,11 +1,11 @@
-# knet
+# knetty
 
 ## Introduction
 
-Knet is a network communication framework written in Go based on the event-driven architecture. It supports TCP, UDP, and websocket protocols and is easy to use like Netty written in Java."
+knetty is a network communication framework written in Go based on the event-driven architecture. It supports TCP, UDP, and websocket protocols and is easy to use like Netty written in Java."
 
 ## Contents
-- [knet](#knet)
+- [knetty](#knetty)
   - [Introduction](#introduction)
   - [Contents](#contents)
   - [Installation](#installation)
@@ -18,22 +18,22 @@ Knet is a network communication framework written in Go based on the event-drive
   - [Benchmarks](#benchmarks)
 
 ## Installation
-To install Knet package,you nedd to install Go and set your Go workspace first.
+To install knetty package,you nedd to install Go and set your Go workspace first.
 
-- You first need [Go](https://golang.org/) installed (**version 1.18+ is required**), then you can use the below Go command to install Knet.
+- You first need [Go](https://golang.org/) installed (**version 1.18+ is required**), then you can use the below Go command to install knetty.
 ```shell
-go get -u  github.com/Softwarekang/knet
+go get -u  github.com/Softwarekang/knetty
 ```
 - import in your code
 ```go
-import "github.com/Softwarekang/knet"
+import "github.com/Softwarekang/knetty"
 ```
     
 ## Quick Start
 
 ```sh
-# View knet code examples
-# work dir in knet
+# View knetty code examples
+# work dir in knetty
 cd /example/sever
 ```
 
@@ -49,18 +49,18 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/Softwarekang/knet"
-	"github.com/Softwarekang/knet/session"
+	"github.com/Softwarekang/knetty"
+	"github.com/Softwarekang/knetty/session"
 )
 
 func main() {
 	// setting optional options for the server
-	options := []knet.ServerOption{
-		knet.WithServiceNewSessionCallBackFunc(newSessionCallBackFn),
+	options := []knetty.ServerOption{
+		knetty.WithServiceNewSessionCallBackFunc(newSessionCallBackFn),
 	}
 
 	// creating a new server with network settings such as tcp/upd, address such as 127.0.0.1:8000, and optional options
-	server := knet.NewServer("tcp", "127.0.0.1:8000", options...)
+	server := knetty.NewServer("tcp", "127.0.0.1:8000", options...)
 	// starting the server
 	if err := server.Server(); err != nil {
 		log.Fatalln(err)
@@ -270,18 +270,18 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Softwarekang/knet"
-	"github.com/Softwarekang/knet/session"
+	"github.com/Softwarekang/knetty"
+	"github.com/Softwarekang/knetty/session"
 )
 
 func main() {
 	// setting optional options for the server
-	options := []knet.ServerOption{
-		knet.WithServiceNewSessionCallBackFunc(newSessionCallBackFn),
+	options := []knetty.ServerOption{
+		knetty.WithServiceNewSessionCallBackFunc(newSessionCallBackFn),
 	}
 
 	// creating a new server with network settings such as tcp/upd, address such as 127.0.0.1:8000, and optional options
-	server := knet.NewServer("tcp", "127.0.0.1:8000", options...)
+	server := knetty.NewServer("tcp", "127.0.0.1:8000", options...)
 	// Initializing the server in a goroutine so that
 	// it won't block the graceful shutdown handling below
 	go func() {

@@ -6,9 +6,9 @@ import (
 	"log"
 	"net"
 
-	"github.com/Softwarekang/knet/net/connection"
-	kpoll "github.com/Softwarekang/knet/net/poll"
-	"github.com/Softwarekang/knet/session"
+	"github.com/Softwarekang/knetty/net/connection"
+	kpoll "github.com/Softwarekang/knetty/net/poll"
+	"github.com/Softwarekang/knetty/session"
 )
 
 func main() {

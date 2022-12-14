@@ -1,4 +1,4 @@
-// Package syscall wrapped syscall for kNet
+// Package syscall wrapped syscall for knetty
 package syscall
 
 import "syscall"

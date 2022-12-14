@@ -11,18 +11,18 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Softwarekang/knet"
-	"github.com/Softwarekang/knet/session"
+	"github.com/Softwarekang/knetty"
+	"github.com/Softwarekang/knetty/session"
 )
 
 func main() {
 	// setting optional options for the server
-	options := []knet.ServerOption{
-		knet.WithServiceNewSessionCallBackFunc(newSessionCallBackFn),
+	options := []knetty.ServerOption{
+		knetty.WithServiceNewSessionCallBackFunc(newSessionCallBackFn),
 	}
 
 	// creating a new server with network settings such as tcp/upd, address such as 127.0.0.1:8000, and optional options
-	server := knet.NewServer("tcp", "127.0.0.1:8000", options...)
+	server := knetty.NewServer("tcp", "127.0.0.1:8000", options...)
 	// Initializing the server in a goroutine so that
 	// it won't block the graceful shutdown handling below
 	go func() {

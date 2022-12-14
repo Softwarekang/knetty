@@ -1,6 +1,6 @@
-package knet
+package knetty
 
-import "github.com/Softwarekang/knet/session"
+import "github.com/Softwarekang/knetty/session"
 
 // ServerOption option for server
 type ServerOption func(*ServerOptions)

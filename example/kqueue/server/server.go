@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	poll2 "github.com/Softwarekang/knet/net/poll"
+	poll2 "github.com/Softwarekang/knetty/net/poll"
 	"log"
 	"net"
 	"syscall"

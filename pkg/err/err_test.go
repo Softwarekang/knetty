@@ -6,10 +6,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestKNetError(t *testing.T) {
+func TestknettyError(t *testing.T) {
 	var (
-		netTimeoutErrp KNetErr
-		connClosedErrp KNetErr
+		netTimeoutErrp knettyErr
+		connClosedErrp knettyErr
 	)
 	netTimeoutErrp = &netTimeoutErr{}
 	connClosedErrp = &connCloseErr{}

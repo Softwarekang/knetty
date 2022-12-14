@@ -1,4 +1,4 @@
-package knet
+package knetty
 
 import (
 	"context"
@@ -7,12 +7,12 @@ import (
 	"net"
 	"net/netip"
 
-	"github.com/Softwarekang/knet/net/connection"
-	"github.com/Softwarekang/knet/net/poll"
-	"github.com/Softwarekang/knet/session"
+	"github.com/Softwarekang/knetty/net/connection"
+	"github.com/Softwarekang/knetty/net/poll"
+	"github.com/Softwarekang/knetty/session"
 )
 
-// Server for kNet
+// Server for knetty
 type Server struct {
 	ServerOptions
 
