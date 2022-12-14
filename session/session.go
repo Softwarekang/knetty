@@ -17,12 +17,12 @@ const (
 
 // Session client、server session
 type Session interface {
+	connection.Connection
 	LocalAddr() string
 	SetCodec(codec Codec)
 	RemoteAddr() string
 	SetEventListener(eventListener EventListener)
 	WritePkg(pkg interface{}) error
-	Close() error
 	Run() error
 }
 
@@ -152,7 +152,7 @@ func (s *session) RemoteAddr() string {
 	return s.Connection.RemoteAddr()
 }
 
-func (s *session) Close() error {
+func (s *session) Shutdown() error {
 	s.Connection.Close()
 	return s.onClose()
 }

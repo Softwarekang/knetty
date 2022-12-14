@@ -5,7 +5,10 @@ import "github.com/Softwarekang/knet/session"
 // ServerOption option for server
 type ServerOption func(*ServerOptions)
 
-// NewSessionCallBackFunc exec when client/sever got a new session
+/*
+	NewSessionCallBackFunc It is executed when a new session is established,
+	so some necessary parameters for drawing need to be set to ensure that the session starts properly.
+*/
 type NewSessionCallBackFunc func(s session.Session) error
 
 // ServerOptions options for server
