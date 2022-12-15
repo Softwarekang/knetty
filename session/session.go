@@ -4,6 +4,7 @@ package session
 import (
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/Softwarekang/knetty/net/connection"
 	"github.com/Softwarekang/knetty/pkg/buffer"
@@ -15,6 +16,8 @@ const (
 	onceReadBufferSize = 1024
 )
 
+type CloseCallBackFunc func() error
+
 // Session client、server session
 type Session interface {
 	connection.Connection
@@ -24,14 +27,17 @@ type Session interface {
 	SetEventListener(eventListener EventListener)
 	WritePkg(pkg interface{}) error
 	Run() error
+	SetSessionCloseCallBack(fn CloseCallBackFunc)
+	Shutdown() error
 }
 
 type session struct {
 	connection.Connection
 
-	pkgCodec      Codec
-	eventListener EventListener
-	close         atomic.Int32
+	closeCallBackFn CloseCallBackFunc
+	pkgCodec        Codec
+	eventListener   EventListener
+	close           atomic.Int32
 }
 
 func NewSession(c connection.Connection) *session {
@@ -84,6 +90,9 @@ func (s *session) Run() error {
 func (s *session) handlePkg() error {
 	var err error
 	defer func() {
+		if err := s.closeCallBackFn(); err != nil {
+			log.Fatalln(err)
+		}
 		if err != nil {
 			s.eventListener.OnError(s, err)
 		}
@@ -152,12 +161,20 @@ func (s *session) RemoteAddr() string {
 	return s.Connection.RemoteAddr()
 }
 
+func (s *session) SetSessionCloseCallBack(fn CloseCallBackFunc) {
+	s.closeCallBackFn = fn
+}
+
 func (s *session) Shutdown() error {
 	s.Connection.Close()
 	return s.onClose()
 }
 
 func (s *session) onClose() error {
+	if !s.isActive() {
+		return nil
+	}
+
 	s.eventListener.OnClose(s)
 	s.close.Store(1)
 	return nil
