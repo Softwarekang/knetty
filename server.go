@@ -111,7 +111,7 @@ func (s *Server) onRead() error {
 
 	go func() {
 		if err := newSession.Run(); err != nil {
-			log.Fatal(err)
+			log.Fatalln(err)
 		}
 	}()
 
@@ -124,7 +124,7 @@ func (s *Server) waitQuit() {
 
 // Shutdown stop server
 func (s *Server) Shutdown(ctx context.Context) error {
-	close(s.close)
+	// todo:pref(shutdown)
 	if err := s.tcpListener.Close(); err != nil {
 		return err
 	}

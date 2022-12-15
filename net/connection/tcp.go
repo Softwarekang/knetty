@@ -2,7 +2,6 @@ package connection
 
 import (
 	"context"
-	mnet "github.com/Softwarekang/knetty/pkg/net"
 	"net"
 	"syscall"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"github.com/Softwarekang/knetty/net/poll"
 	"github.com/Softwarekang/knetty/pkg/buffer"
 	merr "github.com/Softwarekang/knetty/pkg/err"
+	mnet "github.com/Softwarekang/knetty/pkg/net"
 	msyscall "github.com/Softwarekang/knetty/pkg/syscall"
 
 	"go.uber.org/atomic"
