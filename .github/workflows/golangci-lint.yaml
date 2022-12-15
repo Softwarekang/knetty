@@ -3,8 +3,6 @@ on:
   push:
     branches:
     - '*'
-  pull_request:
-    types: [opened, reopened]
 jobs:
   golangci:
     name: lint
