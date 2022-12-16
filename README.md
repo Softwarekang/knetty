@@ -34,7 +34,7 @@ import "github.com/Softwarekang/knetty"
 ```sh
 # View knetty code examples
 # work dir in knetty
-cd /example/sever
+cd /example/server
 ```
 
 ```sh
@@ -134,7 +134,7 @@ func (c codec) Decode(bytes []byte) (interface{}, int, error) {
 ```
 ```sh
 # start up server 
-go run ./example/sever/server/server.go
+go run ./example/server/server/server.go
 ```
 # view server start up code examples
 cat server.go
@@ -240,7 +240,7 @@ func (e *pkgListener) OnError(s session.Session, err error) {
 ```
 ``` sh
 # start up client
-go run ./example/sever/client/client.go
+go run ./example/server/client/client.go
 ```
 
 ## More Detail
