@@ -17,4 +17,6 @@
 .idea
 
 # go test result
-.out
+.out!/bin/
+
+bin/
