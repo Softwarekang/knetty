@@ -55,9 +55,9 @@ func (b *ByteBuffer) Write(data []byte) error {
 }
 
 /*
-	tryGrowSlice expand the cache capacity when it is insufficient
-	When the buffer capacity is less than 1mb, each buffer amplification is doubled, that is, newCap = 2*oldCap.
-	When the buffer capacity exceeds 1mb, the buffer is amplified by 1mb each time, that is, newCap = oldCap + 1mb.
+tryGrowSlice expand the cache capacity when it is insufficient
+When the buffer capacity is less than 1mb, each buffer amplification is doubled, that is, newCap = 2*oldCap.
+When the buffer capacity exceeds 1mb, the buffer is amplified by 1mb each time, that is, newCap = oldCap + 1mb.
 */
 func (b *ByteBuffer) tryGrowSlice(n int) error {
 	newCap := n + b.len
@@ -126,7 +126,6 @@ func (b *ByteBuffer) Release(n int) {
 
 	b.len = math.Max(b.len-n, 0)
 	b.buf = b.buf[n:]
-	return
 }
 
 // Clear .

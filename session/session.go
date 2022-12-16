@@ -90,9 +90,12 @@ func (s *session) Run() error {
 func (s *session) handlePkg() error {
 	var err error
 	defer func() {
-		if err := s.closeCallBackFn(); err != nil {
-			log.Fatalln(err)
+		if s.closeCallBackFn != nil {
+			if err := s.closeCallBackFn(); err != nil {
+				log.Println(err)
+			}
 		}
+
 		if err != nil {
 			s.eventListener.OnError(s, err)
 		}

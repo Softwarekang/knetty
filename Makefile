@@ -1,8 +1,19 @@
+include scripts/make-rules/common.mk
+include scripts/make-rules/golang.mk
+include scripts/make-rules/tools.mk
+
+.PHONY: build
 build:
-	go build
+	@$(MAKE) go.build
 
+.PHONY: cover
 cover:
-	go test -cover
+	@$(MAKE) go.cover
 
+.PHONY: test
 test:
-	go test -coverprofile=knetty_coverage.out ./...
+	@$(MAKE) go.test
+
+.PHONY: lint
+lint:
+	@$(MAKE) go.lint

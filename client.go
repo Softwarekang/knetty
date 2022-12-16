@@ -18,6 +18,7 @@ type Client struct {
 }
 
 // NewClient init the client
+//
 //	network and address are necessary parameters
 //	network like tcp、udp、websocket
 //	address like 127.0.0.1:8000、localhost:8000.
@@ -56,7 +57,7 @@ func (c *Client) tcpEventloop() error {
 	newSession.SetSessionCloseCallBack(c.quit)
 	go func() {
 		if err := newSession.Run(); err != nil {
-			log.Fatalln(err)
+			log.Println(err)
 		}
 	}()
 

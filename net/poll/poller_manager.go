@@ -62,7 +62,12 @@ func (m *pollerManager) Run() error {
 	for idx := len(m.pollers); idx < m.NumLoops; idx++ {
 		var poller = NewDefaultPoller()
 		m.pollers = append(m.pollers, poller)
-		go poller.Wait()
+
+		go func() {
+			if err := poller.Wait(); err != nil {
+				log.Println(err)
+			}
+		}()
 	}
 
 	return nil

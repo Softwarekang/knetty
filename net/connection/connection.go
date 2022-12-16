@@ -2,6 +2,7 @@
 package connection
 
 import (
+	"log"
 	"syscall"
 	"time"
 
@@ -150,9 +151,13 @@ func (c *knettyConn) OnInterrupt() error {
 		return err
 	}
 
-	if c.closeCallBackFn != nil {
-		c.closeCallBackFn()
+	if err := c.closeCallBackFn; err != nil {
+		err := c.closeCallBackFn()
+		if err != nil {
+			log.Println(err)
+		}
 	}
+
 	c.close.Store(1)
 	return nil
 }
