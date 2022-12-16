@@ -63,9 +63,11 @@ func (m *pollerManager) Run() error {
 		var poller = NewDefaultPoller()
 		m.pollers = append(m.pollers, poller)
 
-		if err := poller.Wait(); err != nil {
-			log.Println("poller wait err:", err)
-		}
+		go func() {
+			if err := poller.Wait(); err != nil {
+				log.Println(err)
+			}
+		}()
 	}
 
 	return nil
