@@ -63,7 +63,7 @@ func main() {
 	server := knetty.NewServer("tcp", "127.0.0.1:8000", options...)
 	// starting the server
 	if err := server.Server(); err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 		return
 	}
 }
@@ -178,11 +178,11 @@ func newSessionCallBackFn(s session.Session) error {
 
 func sendHello(s session.Session) {
 	if err := s.WritePkg("hello"); err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
 
 	if err := s.FlushBuffer(); err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
 }
 
