@@ -4,9 +4,10 @@ package session
 import (
 	"errors"
 	"fmt"
+	"log"
+
 	"github.com/Softwarekang/knetty/net/connection"
 	"github.com/Softwarekang/knetty/pkg/buffer"
-	"log"
 
 	"go.uber.org/atomic"
 )
