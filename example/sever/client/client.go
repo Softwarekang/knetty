@@ -33,11 +33,11 @@ func newSessionCallBackFn(s session.Session) error {
 
 func sendHello(s session.Session) {
 	if err := s.WritePkg("hello"); err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
 
 	if err := s.FlushBuffer(); err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
 }
 

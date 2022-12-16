@@ -22,10 +22,10 @@ type Server struct {
 }
 
 /*
-	NewServer init the server
-	network and address are necessary parameters
-	network like tcp、udp、websocket
-	address like 127.0.0.1:8000、localhost:8000.
+NewServer init the server
+network and address are necessary parameters
+network like tcp、udp、websocket
+address like 127.0.0.1:8000、localhost:8000.
 */
 func NewServer(network, address string, opts ...ServerOption) *Server {
 	s := &Server{
@@ -111,7 +111,7 @@ func (s *Server) onRead() error {
 
 	go func() {
 		if err := newSession.Run(); err != nil {
-			log.Fatalln(err)
+			log.Println(err)
 		}
 	}()
 
