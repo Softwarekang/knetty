@@ -7,6 +7,9 @@
       "pattern": "^https://github.com/.*?/pull"
     },
     {
+      "pattern": "^docs/.*"
+    },
+    {
       "pattern": "^#"
     }
   ],
