@@ -7,7 +7,7 @@ on:
     type: [review_requested, ready_for_review]
 jobs:
   changes:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     outputs:
       docs: ${{ steps.filter.outputs.docs }}
       go: ${{ steps.filter.outputs.go }}
@@ -41,7 +41,7 @@ jobs:
     needs: changes
     if: |
       (needs.changes.outputs.go == 'true')
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Setup Go Env
@@ -62,7 +62,7 @@ jobs:
     if: |
       (needs.changes.outputs.docs == 'true')
     name: 🍇 Markdown
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: 🚀 Use Node.js
@@ -75,7 +75,7 @@ jobs:
     needs: changes
     if: |
       (needs.changes.outputs.docs == 'true')
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     name: Check Markdown links
     steps:
       - uses: actions/checkout@v3
