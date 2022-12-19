@@ -1,5 +1,7 @@
 # knetty
 
+[English](README.md) | [中文](docs/zh/README.md)
+
 ## Introduction
 
 knetty is a network communication framework written in Go based on the event-driven architecture. It supports TCP, UDP, and websocket protocols and is easy to use like Netty written in Java."
