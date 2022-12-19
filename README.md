@@ -144,7 +144,7 @@ func (c codec) Decode(bytes []byte) (interface{}, int, error) {
 go run ./example/server/server/server.go
 ```
 
-# view server start up code examples
+## View server start-up code examples
 
 cat server.go
 
