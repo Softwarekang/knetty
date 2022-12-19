@@ -1,12 +1,9 @@
 name: lint-checker-ci
-
 on:
   push:
-    branches:
-      - master
+    branches: [ "main" ]
   pull_request:
-    branches:
-      - master
+    branches: [ "main" ]
     type: [review_requested, ready_for_review]
 jobs:
   changes:
