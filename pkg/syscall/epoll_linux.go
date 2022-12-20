@@ -15,7 +15,7 @@ var (
 // EpollEvent epoll event
 type EpollEvent struct {
 	Events uint32
-	Udata  *byte
+	Udata  [8]byte
 }
 
 // EpollCtl ctl for epoll
