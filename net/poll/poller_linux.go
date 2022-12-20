@@ -12,8 +12,7 @@ import (
 
 // Epoll poller for unix
 type Epoll struct {
-	fd       int
-	netFdMap map[int]*NetFileDesc
+	fd int
 }
 
 // NewDefaultPoller .
@@ -23,8 +22,7 @@ func NewDefaultPoller() Poll {
 		panic(err)
 	}
 	return &Epoll{
-		fd:       fd,
-		netFdMap: make(map[int]*NetFileDesc),
+		fd: fd,
 	}
 }
 
