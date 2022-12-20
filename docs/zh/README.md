@@ -2,25 +2,25 @@
 
 [English](README.md) | [中文](docs/zh/README.md)
 
-## Introduction
+## 简介
 
-knetty is a network communication framework written in Go based on the event-driven architecture. It supports TCP, UDP, and websocket protocols and is easy to use like Netty written in Java."
+knetty 是一个用Go编写的基于事件驱动架构的网络通信框架。它支持TCP、UDP和websocket协议，并且像用Java编写的Netty一样易于使用。"
 
-## Contents
+## 内容
 
 - [knetty](#knetty)
-  - [Introduction](#introduction)
-  - [Contents](#contents)
-  - [Installation](#installation)
+  - [简介](#简介)
+  - [内容](#内容)
+  - [安装](#安装)
   - [Quick Start](#quick-start)
-  - [More Detail](#more-detail)
+  - [更多细节](#更多细节)
     - [Using NewSessionCallBackFunc](#using-newsessioncallbackfunc)
     - [Using Codec](#using-codec)
     - [Using EventListener](#using-eventlistener)
     - [Graceful shutdown](#graceful-shutdown)
   - [Benchmarks](#benchmarks)
 
-## Installation
+## 安装
 
 To install knetty package,you nedd to install Go and set your Go workspace first.
 
@@ -257,7 +257,7 @@ func (e *pkgListener) OnError(s session.Session, err error) {
 go run ./example/server/client/client.go
 ```
 
-## More Detail
+## 更多细节
 
 ### Using NewSessionCallBackFunc
 
