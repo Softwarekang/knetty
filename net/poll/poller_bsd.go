@@ -1,3 +1,5 @@
+//go:build (darwin || netbsd || freebsd || openbsd || dragonfly) && !race
+
 package poll
 
 import (
@@ -6,8 +8,8 @@ import (
 	"unsafe"
 )
 
-// KqueuePoller poller for
-type KqueuePoller struct {
+// Kqueue poller for
+type Kqueue struct {
 	fd int
 }
 
@@ -26,19 +28,19 @@ func NewDefaultPoller() Poll {
 		panic(err)
 	}
 
-	return &KqueuePoller{fd: fd}
+	return &Kqueue{fd: fd}
 }
 
 // Register .
-func (k KqueuePoller) Register(netFd *NetFileDesc, eventType EventType) error {
+func (k Kqueue) Register(netFd *NetFileDesc, eventType EventType) error {
 	var filter int16
 	var flags uint16
 	switch eventType {
-	case Write:
+	case ReadToRW:
 		filter, flags = syscall.EVFILT_WRITE, syscall.EV_ADD|syscall.EV_ENABLE
 	case Read:
 		filter, flags = syscall.EVFILT_READ, syscall.EV_ADD|syscall.EV_ENABLE
-	case DeleteWrite:
+	case RwToRead:
 		filter, flags = syscall.EVFILT_WRITE, syscall.EV_DELETE|syscall.EV_ONESHOT
 	case DeleteRead:
 		filter, flags = syscall.EVFILT_READ, syscall.EV_DELETE|syscall.EV_ONESHOT
@@ -60,7 +62,7 @@ func (k KqueuePoller) Register(netFd *NetFileDesc, eventType EventType) error {
 }
 
 // Wait .
-func (k KqueuePoller) Wait() error {
+func (k Kqueue) Wait() error {
 	events := make([]syscall.Kevent_t, 1024)
 	for {
 		n, err := syscall.Kevent(k.fd, nil, events, nil)
@@ -109,6 +111,6 @@ func (k KqueuePoller) Wait() error {
 }
 
 // Close .
-func (k KqueuePoller) Close() error {
+func (k Kqueue) Close() error {
 	return syscall.Close(k.fd)
 }
