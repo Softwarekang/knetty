@@ -48,7 +48,7 @@ type EventType int
 const (
 	Read EventType = iota + 1
 	DeleteRead
-	Write
-	DeleteWrite
+	ReadToRW
+	RwToRead
 	OnceWrite
 )

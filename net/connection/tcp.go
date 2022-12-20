@@ -190,7 +190,7 @@ func (t *TcpConn) FlushBuffer() error {
 	}
 
 	// net buffer is full
-	if err := t.Register(poll.Write); err != nil {
+	if err := t.Register(poll.ReadToRW); err != nil {
 		return err
 	}
 

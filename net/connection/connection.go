@@ -134,7 +134,7 @@ func (c *knettyConn) OnWrite() error {
 
 	c.outputBuffer.Release(n)
 	if c.outputBuffer.IsEmpty() {
-		if err := c.Register(poll.DeleteWrite); err != nil {
+		if err := c.Register(poll.RwToRead); err != nil {
 			return err
 		}
 
