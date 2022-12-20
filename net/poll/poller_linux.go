@@ -34,23 +34,23 @@ func (e *Epoll) Register(netFd *NetFileDesc, eventType EventType) error {
 	var events uint32
 	switch eventType {
 	case ReadToRW:
-		op, events = syscall.EPOLL_CTL_MOD, syscall.EPOLLIN|syscall.EPOLLOUT|syscall.EPOLLHUP|syscall.EPOLLERR
+		op, events = syscall.EPOLL_CTL_MOD, syscall.EPOLLIN|syscall.EPOLLOUT
 	case Read:
-		op, events = syscall.EPOLL_CTL_ADD, syscall.EPOLLIN|syscall.EPOLLHUP|syscall.EPOLLERR
+		op, events = syscall.EPOLL_CTL_ADD, syscall.EPOLLIN
 	case RwToRead:
-		op, events = syscall.EPOLL_CTL_MOD, syscall.EPOLLIN|syscall.EPOLLRDHUP|syscall.EPOLLERR
+		op, events = syscall.EPOLL_CTL_MOD, syscall.EPOLLIN
 	case DeleteRead:
-		op, events = syscall.EPOLL_CTL_DEL, syscall.EPOLLIN|syscall.EPOLLRDHUP|syscall.EPOLLERR
+		op, events = syscall.EPOLL_CTL_DEL, syscall.EPOLLIN
 	case OnceWrite:
 		// once write use et trigger
-		op, events = syscall.EPOLL_CTL_ADD, uint32(msyscall.EpollET|syscall.EPOLLOUT|syscall.EPOLLRDHUP|syscall.EPOLLERR)
+		op, events = syscall.EPOLL_CTL_ADD, uint32(msyscall.EpollET|syscall.EPOLLOUT)
 	default:
 		return fmt.Errorf("epoll not support the event type:%d", int(eventType))
 	}
 
 	return msyscall.EpollCtl(e.fd, op, netFd.FD, &msyscall.EpollEvent{
-		Events: events,
-		Udata:  *(**byte)(unsafe.Pointer(&netFd)),
+		Events: events | syscall.EPOLLHUP | syscall.EPOLLRDHUP | syscall.EPOLLERR,
+		Udata:  *(*[8]byte)(unsafe.Pointer(&netFd)),
 	})
 }
 
@@ -69,7 +69,7 @@ func (e *Epoll) Wait() error {
 			event := events[i]
 			netFD := *(**NetFileDesc)(unsafe.Pointer(&event.Udata))
 			// check interrupt
-			if event.Events&(syscall.EPOLLHUP|syscall.EPOLLRDHUP) != 0 {
+			if event.Events&(syscall.EPOLLHUP|syscall.EPOLLRDHUP|syscall.EPOLLERR) != 0 {
 				if netFD.OnInterrupt != nil {
 					if err := netFD.OnInterrupt(); err != nil {
 						fmt.Printf("netFD onInterrupt err:%v", err)
