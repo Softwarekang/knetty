@@ -12,7 +12,7 @@ type knettyErr interface {
 var (
 	// NetIOTimeoutErr net io err
 	NetIOTimeoutErr = &netTimeoutErr{}
-	// ConnClosedErr conn interrupted err
+	// ConnClosedErr conn closed err
 	ConnClosedErr = &connCloseErr{}
 )
 
@@ -31,7 +31,7 @@ type connCloseErr struct {
 }
 
 func (c *connCloseErr) Error() string {
-	return "net conn interrupted"
+	return "net conn is closed"
 }
 
 func (c *connCloseErr) TimeoutError() bool {
