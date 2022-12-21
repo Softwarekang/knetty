@@ -13,15 +13,15 @@ func ResolveConnFileDesc(conn net.Conn) (int, error) {
 		return 0, errors.New("conn is nil")
 	}
 
-	switch conn.(type) {
+	switch c := conn.(type) {
 	case *net.TCPConn:
-		file, err := conn.(*net.TCPConn).File()
+		file, err := c.File()
 		if err != nil {
 			return 0, err
 		}
 		return int(file.Fd()), nil
 	case *net.UDPConn:
-		file, err := conn.(*net.UDPConn).File()
+		file, err := c.File()
 		if err != nil {
 			return 0, err
 		}
@@ -37,13 +37,11 @@ func ResolveNetAddrToSocketAddr(netAddr net.Addr) (syscall.Sockaddr, error) {
 		return nil, errors.New("netAddr is nil")
 	}
 
-	switch netAddr.(type) {
+	switch addr := netAddr.(type) {
 	case *net.TCPAddr:
-		tcpAddr := netAddr.(*net.TCPAddr)
-		return convertAddrToSocketAddr(tcpAddr.IP, tcpAddr.Port)
+		return convertAddrToSocketAddr(addr.IP, addr.Port)
 	case *net.UDPAddr:
-		udpAddr := netAddr.(*net.UDPAddr)
-		return convertAddrToSocketAddr(udpAddr.IP, udpAddr.Port)
+		return convertAddrToSocketAddr(addr.IP, addr.Port)
 	default:
 		return nil, errors.New("ResolveNetAddrToSocketAddr only support tcp、udp addr")
 	}
