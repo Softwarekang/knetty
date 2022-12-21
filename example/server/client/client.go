@@ -76,7 +76,7 @@ type pkgListener struct {
 
 func (e *pkgListener) OnMessage(s session.Session, pkg interface{}) {
 	data := pkg.(string)
-	fmt.Println(data)
+	fmt.Printf("client got data:%s\n", data)
 }
 
 func (e *pkgListener) OnConnect(s session.Session) {
@@ -85,9 +85,10 @@ func (e *pkgListener) OnConnect(s session.Session) {
 }
 
 func (e *pkgListener) OnClose(s session.Session) {
-	fmt.Printf("session close\n")
+	fmt.Printf("client session: %s closed\n", s.Info())
+
 }
 
 func (e *pkgListener) OnError(s session.Session, err error) {
-	fmt.Printf("session got err :%v\n", err)
+	fmt.Printf("client session: %s got err :%v\n", s.Info(), err)
 }

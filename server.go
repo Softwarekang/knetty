@@ -85,6 +85,7 @@ func (s *Server) listenTcp() error {
 		return err
 	}
 
+	fmt.Printf("sever started listen on: [%s]....", s.address)
 	s.waitQuit()
 	return nil
 }
