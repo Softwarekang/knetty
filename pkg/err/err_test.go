@@ -15,7 +15,7 @@ func TestKnettyError(t *testing.T) {
 	connClosedErrp = &connCloseErr{}
 
 	assert.Equal(t, "net io timeout", netTimeoutErrp.Error())
-	assert.Equal(t, "net conn interrupted", connClosedErrp.Error())
+	assert.Equal(t, "net conn is closed", connClosedErrp.Error())
 
 	assert.Equal(t, true, netTimeoutErrp.TimeoutError())
 	assert.Equal(t, false, connClosedErrp.TimeoutError())

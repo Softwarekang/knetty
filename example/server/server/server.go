@@ -66,7 +66,7 @@ type helloWorldListener struct {
 
 func (e *helloWorldListener) OnMessage(s session.Session, pkg interface{}) {
 	data := pkg.(string)
-	fmt.Println(data)
+	fmt.Printf("server got data:%s\n", data)
 }
 
 func (e *helloWorldListener) OnConnect(s session.Session) {
@@ -74,11 +74,11 @@ func (e *helloWorldListener) OnConnect(s session.Session) {
 }
 
 func (e *helloWorldListener) OnClose(s session.Session) {
-	fmt.Printf("session close\n")
+	fmt.Printf("server session: %s closed\n", s.Info())
 }
 
 func (e *helloWorldListener) OnError(s session.Session, err error) {
-	fmt.Printf("session got err :%v\n", err)
+	fmt.Printf("session: %s got err :%v\n", s.Info(), err)
 }
 
 type codec struct {

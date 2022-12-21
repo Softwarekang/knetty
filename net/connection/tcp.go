@@ -2,6 +2,7 @@ package connection
 
 import (
 	"context"
+	"errors"
 	"net"
 	"syscall"
 	"time"
@@ -24,7 +25,7 @@ type TcpConn struct {
 // NewTcpConn .
 func NewTcpConn(conn net.Conn) (*TcpConn, error) {
 	if conn == nil {
-		panic("newTcpConn(conn net.Conn):@conn is nil")
+		return nil, errors.New("conn is nil")
 	}
 
 	var localAddress, remoteAddress string
@@ -36,24 +37,21 @@ func NewTcpConn(conn net.Conn) (*TcpConn, error) {
 		remoteAddress = conn.RemoteAddr().String()
 	}
 
-	tcpConn := conn.(*net.TCPConn)
-	file, err := tcpConn.File()
+	fd, err := mnet.ResolveConnFileDesc(conn)
 	if err != nil {
 		return nil, err
 	}
 
-	tcpAddr := conn.RemoteAddr().(*net.TCPAddr)
-	remoteSocketAdder, err := mnet.IPToSockAddrInet4(tcpAddr.IP, tcpAddr.Port)
+	remoteSocketAddr, err := mnet.ResolveNetAddrToSocketAddr(conn.RemoteAddr())
 	if err != nil {
 		return nil, err
 	}
-
 	// set conn no block
-	_ = msyscall.SetConnectionNoBlock(int(file.Fd()))
+	_ = msyscall.SetConnectionNoBlock(fd)
 	return &TcpConn{
 		knettyConn: knettyConn{
-			fd:                 int(file.Fd()),
-			remoteSocketAddr:   remoteSocketAdder,
+			fd:                 fd,
+			remoteSocketAddr:   remoteSocketAddr,
 			readTimeOut:        atomic.NewDuration(netIOTimeout),
 			writeTimeOut:       atomic.NewDuration(netIOTimeout),
 			localAddress:       localAddress,
@@ -163,6 +161,7 @@ func (t *TcpConn) read(p []byte) (int, error) {
 		if !t.isActive() {
 			return 0, merr.ConnClosedErr
 		}
+		// todo: Using a backoff mechanism to optimize the read function
 		if t.inputBuffer.Len() == 0 {
 			time.Sleep(1 * time.Second)
 			continue
@@ -213,13 +212,11 @@ func (t *TcpConn) SetCloseCallBack(fn CloseCallBackFunc) {
 }
 
 // Close .
-func (t *TcpConn) Close() {
+func (t *TcpConn) Close() error {
 	if !t.isActive() {
-		return
+		return nil
 	}
-	if err := t.OnInterrupt(); err != nil {
-		return
-	}
+	return t.OnInterrupt()
 }
 
 // Type .

@@ -3,18 +3,19 @@ package knetty
 import (
 	"context"
 	"fmt"
-	"github.com/Softwarekang/knetty/net/poll"
 	"log"
 	"net"
 
 	"github.com/Softwarekang/knetty/net/connection"
+	"github.com/Softwarekang/knetty/net/poll"
 	"github.com/Softwarekang/knetty/session"
 )
 
 type Client struct {
 	ClientOptions
 
-	close chan struct{}
+	session session.Session
+	close   chan struct{}
 }
 
 // NewClient init the client
@@ -50,11 +51,12 @@ func (c *Client) tcpEventloop() error {
 	}
 
 	newSession := session.NewSession(conn)
+	newSession.SetCloseCallBackFunc(c.quit)
 	if err := c.newSession(newSession); err != nil {
 		return err
 	}
 
-	newSession.SetSessionCloseCallBack(c.quit)
+	c.session = newSession
 	go func() {
 		if err := newSession.Run(); err != nil {
 			log.Println(err)

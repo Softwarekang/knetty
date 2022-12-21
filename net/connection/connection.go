@@ -8,6 +8,7 @@ import (
 
 	"github.com/Softwarekang/knetty/net/poll"
 	"github.com/Softwarekang/knetty/pkg/buffer"
+
 	"go.uber.org/atomic"
 )
 
@@ -59,7 +60,7 @@ type Connection interface {
 	// Type  will return conn type
 	Type() ConnType
 	// Close will interrupt conn
-	Close()
+	Close() error
 }
 
 type knettyConn struct {
@@ -81,7 +82,7 @@ type knettyConn struct {
 	close              atomic.Int32
 }
 
-// Register register in poller
+// Register conn in poller
 func (c *knettyConn) Register(eventType poll.EventType) error {
 	c.initNetFd()
 	if err := c.poller.Register(c.netFd, eventType); err != nil {
@@ -145,6 +146,7 @@ func (c *knettyConn) OnWrite() error {
 
 // OnInterrupt refactor for conn
 func (c *knettyConn) OnInterrupt() error {
+	c.close.Store(1)
 	if err := c.poller.Register(&poll.NetFileDesc{
 		FD: c.fd,
 	}, poll.DeleteRead); err != nil {
@@ -157,7 +159,5 @@ func (c *knettyConn) OnInterrupt() error {
 			log.Println(err)
 		}
 	}
-
-	c.close.Store(1)
 	return nil
 }
