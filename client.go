@@ -19,10 +19,9 @@ type Client struct {
 }
 
 // NewClient init the client
-//
-//	network and address are necessary parameters
-//	network like tcp、udp、websocket
-//	address like 127.0.0.1:8000、localhost:8000.
+// network and address are necessary parameters
+// network like tcp、udp、websocket
+// address like 127.0.0.1:8000、localhost:8000.
 func NewClient(network, address string, opts ...ClientOption) *Client {
 	c := &Client{
 		close: make(chan struct{}),
@@ -89,7 +88,7 @@ func (c *Client) waitQuit() {
 	<-c.close
 }
 
-func (c *Client) quit() error {
+func (c *Client) quit(session session.Session) error {
 	select {
 	case c.close <- struct{}{}:
 	default:
@@ -100,6 +99,6 @@ func (c *Client) quit() error {
 // Shutdown close the client within the maximum allowed time in ctx, otherwise return timeout err.
 func (c *Client) Shutdown(ctx context.Context) error {
 	// todo:fix shutdown
-	_ = c.quit()
+	_ = c.quit(nil)
 	return nil
 }

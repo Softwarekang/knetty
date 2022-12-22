@@ -18,7 +18,7 @@ const (
 )
 
 // CloseCallBackFunc exec when session stopping
-type CloseCallBackFunc func() error
+type CloseCallBackFunc func(Session) error
 
 // Session client、server session
 type Session interface {
@@ -181,7 +181,7 @@ func (s *session) handlePkg() error {
 	var err error
 	defer func() {
 		if s.closeCallBackFn != nil {
-			if err := s.closeCallBackFn(); err != nil {
+			if err := s.closeCallBackFn(s); err != nil {
 				log.Println(err)
 			}
 		}
