@@ -8,6 +8,7 @@ import (
 
 	"github.com/Softwarekang/knetty/net/connection"
 	"github.com/Softwarekang/knetty/net/poll"
+	merr "github.com/Softwarekang/knetty/pkg/err"
 	"github.com/Softwarekang/knetty/session"
 )
 
@@ -15,7 +16,7 @@ type Client struct {
 	ClientOptions
 
 	session session.Session
-	close   chan struct{}
+	closeCh chan struct{}
 }
 
 // NewClient init the client
@@ -24,7 +25,7 @@ type Client struct {
 // address like 127.0.0.1:8000、localhost:8000.
 func NewClient(network, address string, opts ...ClientOption) *Client {
 	c := &Client{
-		close: make(chan struct{}),
+		closeCh: make(chan struct{}),
 	}
 	opts = append(opts, withClientNetwork(network), withClientAddress(address))
 	for _, opt := range opts {
@@ -35,6 +36,10 @@ func NewClient(network, address string, opts ...ClientOption) *Client {
 }
 
 func (c *Client) Run() error {
+	if !c.isActive() {
+		return merr.ClientClosedErr
+	}
+
 	switch c.network {
 	case "tcp":
 		return c.tcpEventloop()
@@ -85,20 +90,44 @@ func (c *Client) dicTcp() (connection.Connection, error) {
 }
 
 func (c *Client) waitQuit() {
-	<-c.close
+	<-c.closeCh
 }
 
-func (c *Client) quit(session session.Session) error {
+func (c *Client) quit(session session.Session) {
+	c.closeClientCh()
+}
+
+func (c *Client) isActive() bool {
 	select {
-	case c.close <- struct{}{}:
+	case <-c.closeCh:
+		return false
 	default:
+		return true
 	}
-	return nil
 }
 
-// Shutdown close the client within the maximum allowed time in ctx, otherwise return timeout err.
+// Shutdown closeCh the client within the maximum allowed time in ctx, otherwise return timeout err.
 func (c *Client) Shutdown(ctx context.Context) error {
-	// todo:fix shutdown
-	_ = c.quit(nil)
-	return nil
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("server shutdown caused by:%s", ctx.Err())
+		case <-c.closeCh:
+			return merr.ClientClosedErr
+		default:
+			c.quit(nil)
+			if c.session != nil {
+				return c.session.Close()
+			}
+			return nil
+		}
+	}
+}
+
+func (c *Client) closeClientCh() {
+	select {
+	case <-c.closeCh:
+	default:
+		close(c.closeCh)
+	}
 }

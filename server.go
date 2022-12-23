@@ -10,6 +10,7 @@ import (
 
 	"github.com/Softwarekang/knetty/net/connection"
 	"github.com/Softwarekang/knetty/net/poll"
+	merr "github.com/Softwarekang/knetty/pkg/err"
 	"github.com/Softwarekang/knetty/session"
 )
 
@@ -21,7 +22,7 @@ type Server struct {
 	sessions    map[session.Session]struct{}
 	tcpListener net.Listener
 	poller      poll.Poll
-	close       chan struct{}
+	closeCh     chan struct{}
 }
 
 // NewServer init the server
@@ -32,7 +33,7 @@ func NewServer(network, address string, opts ...ServerOption) *Server {
 	s := &Server{
 		poller:   poll.PollerManager.Pick(),
 		sessions: make(map[session.Session]struct{}),
-		close:    make(chan struct{}),
+		closeCh:  make(chan struct{}),
 	}
 	opts = append(opts, withServerNetwork(network), withServerAddress(address))
 	for _, opt := range opts {
@@ -93,6 +94,10 @@ func (s *Server) listenTcp() error {
 }
 
 func (s *Server) onRead() error {
+	if !s.isActive() {
+		return merr.ServerClosedErr
+	}
+
 	netConn, err := s.tcpListener.Accept()
 	if err != nil {
 		return err
@@ -112,6 +117,7 @@ func (s *Server) onRead() error {
 		return err
 	}
 
+	newSession.SetCloseCallBackFunc(s.onSessionClose)
 	s.mu.Lock()
 	s.sessions[newSession] = struct{}{}
 	s.mu.Unlock()
@@ -125,7 +131,7 @@ func (s *Server) onRead() error {
 }
 
 func (s *Server) waitQuit() {
-	<-s.close
+	<-s.closeCh
 }
 
 func (s *Server) onSessionClose(session session.Session) {
@@ -136,8 +142,8 @@ func (s *Server) onSessionClose(session session.Session) {
 
 func (s *Server) isActive() bool {
 	select {
-	case <-s.close:
-		return true
+	case <-s.closeCh:
+		return false
 	default:
 		return true
 	}
@@ -149,21 +155,32 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("server shutdown caused by:%s", ctx.Err())
+		case <-s.closeCh:
+			return merr.ServerClosedErr
 		default:
+			s.closeServerCloseCh()
 			if s.tcpListener != nil {
 				if err := s.tcpListener.Close(); err != nil {
-					log.Printf("tcpListener close err caused by:%s", err.Error())
+					log.Printf("tcpListener closeCh err caused by:%s", err.Error())
 				}
 			}
 
 			s.mu.Lock()
 			for ss := range s.sessions {
 				if err := ss.Close(); err != nil {
-					log.Printf("session close err caused by:%s", err.Error())
+					log.Printf("session closeCh err caused by:%s", err.Error())
 				}
 			}
 			s.mu.Unlock()
 			return s.poller.Close()
 		}
+	}
+}
+
+func (s *Server) closeServerCloseCh() {
+	select {
+	case <-s.closeCh:
+	default:
+		close(s.closeCh)
 	}
 }

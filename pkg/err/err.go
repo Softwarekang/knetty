@@ -13,11 +13,14 @@ var (
 	// NetIOTimeoutErr net io err
 	NetIOTimeoutErr = &netTimeoutErr{}
 	// ConnClosedErr conn closed err
-	ConnClosedErr = &connCloseErr{}
+	ConnClosedErr = &connClosedErr{}
+	// ClientClosedErr client closed err
+	ClientClosedErr = &clientClosedErr{}
+	// ServerClosedErr server closed err
+	ServerClosedErr = &serverClosedErr{}
 )
 
-type netTimeoutErr struct {
-}
+type netTimeoutErr struct{}
 
 func (n netTimeoutErr) Error() string {
 	return "net io timeout"
@@ -27,13 +30,32 @@ func (n netTimeoutErr) TimeoutError() bool {
 	return true
 }
 
-type connCloseErr struct {
-}
+type connClosedErr struct{}
 
-func (c *connCloseErr) Error() string {
+func (c *connClosedErr) Error() string {
 	return "net conn is closed"
 }
 
-func (c *connCloseErr) TimeoutError() bool {
+func (c *connClosedErr) TimeoutError() bool {
+	return false
+}
+
+type clientClosedErr struct{}
+
+func (c *clientClosedErr) Error() string {
+	return "client has already been closed"
+}
+
+func (c *clientClosedErr) TimeoutError() bool {
+	return false
+}
+
+type serverClosedErr struct{}
+
+func (s *serverClosedErr) Error() string {
+	return "server has already been closed"
+}
+
+func (s *serverClosedErr) TimeoutError() bool {
 	return false
 }
