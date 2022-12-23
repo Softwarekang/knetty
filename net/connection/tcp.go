@@ -110,7 +110,7 @@ func (t *TcpConn) SetWriteTimeout(wTimeout time.Duration) {
 
 // Next .
 func (t *TcpConn) Next(n int) ([]byte, error) {
-	if err := t.waitReadBuffer(n); err != nil {
+	if err := t.waitReadBuffer(n, true); err != nil {
 		return nil, err
 	}
 
@@ -124,32 +124,47 @@ func (t *TcpConn) Next(n int) ([]byte, error) {
 
 // Read .
 func (t *TcpConn) Read(p []byte) (int, error) {
+	if err := t.waitReadBuffer(1, false); err != nil {
+		return 0, err
+	}
+
 	return t.read(p)
 }
 
-func (t *TcpConn) waitReadBuffer(n int) error {
+func (t *TcpConn) waitReadBuffer(n int, timeout bool) error {
 	if t.inputBuffer.Len() >= n {
 		return nil
 	}
 
 	t.waitBufferSize.Store(int64(n))
 	defer t.waitBufferSize.Store(0)
-	if t.inputBuffer.Len() >= n {
-		return nil
+	if timeout {
+		return t.waitWithTimeout(n)
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), t.readTimeOut.Load())
-	defer cancel()
 	for t.inputBuffer.Len() < n {
+		<-t.waitBufferChan
 		if !t.isActive() {
 			return merr.ConnClosedErr
 		}
+	}
 
+	return nil
+}
+
+func (t *TcpConn) waitWithTimeout(n int) error {
+	ctx, cancel := context.WithTimeout(context.TODO(), t.readTimeOut.Load())
+	defer cancel()
+	for t.inputBuffer.Len() < n {
 		select {
 		case <-ctx.Done():
 			return merr.NetIOTimeoutErr
 		case <-t.waitBufferChan:
-			continue
+
+		}
+
+		if !t.isActive() {
+			return merr.ConnClosedErr
 		}
 	}
 
@@ -216,6 +231,7 @@ func (t *TcpConn) Close() error {
 	if !t.isActive() {
 		return nil
 	}
+
 	return t.OnInterrupt()
 }
 

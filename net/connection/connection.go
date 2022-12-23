@@ -147,6 +147,7 @@ func (c *knettyConn) OnWrite() error {
 // OnInterrupt refactor for conn
 func (c *knettyConn) OnInterrupt() error {
 	c.close.Store(1)
+	c.closeWaitBufferCh()
 	if err := c.poller.Register(&poll.NetFileDesc{
 		FD: c.fd,
 	}, poll.DeleteRead); err != nil {
@@ -160,4 +161,12 @@ func (c *knettyConn) OnInterrupt() error {
 		}
 	}
 	return nil
+}
+
+func (c *knettyConn) closeWaitBufferCh() {
+	select {
+	case <-c.waitBufferChan:
+	default:
+		close(c.waitBufferChan)
+	}
 }
