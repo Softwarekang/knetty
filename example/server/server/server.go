@@ -37,6 +37,7 @@ func main() {
 	// kill -2 is syscall.SIGINT
 	// kill -9 is syscall.SIGKILL but can't be caught, so don't need to add it
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	log.Printf("server pid:%d", os.Getpid())
 	<-quit
 	log.Println("shutting down server...")
 

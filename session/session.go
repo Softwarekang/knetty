@@ -4,7 +4,6 @@ package session
 import (
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/Softwarekang/knetty/net/connection"
@@ -18,7 +17,7 @@ const (
 )
 
 // CloseCallBackFunc exec when session stopping
-type CloseCallBackFunc func() error
+type CloseCallBackFunc func(Session)
 
 // Session client、server session
 type Session interface {
@@ -181,9 +180,7 @@ func (s *session) handlePkg() error {
 	var err error
 	defer func() {
 		if s.closeCallBackFn != nil {
-			if err := s.closeCallBackFn(); err != nil {
-				log.Println(err)
-			}
+			s.closeCallBackFn(s)
 		}
 
 		if err != nil {

@@ -13,14 +13,14 @@ type Codec interface {
 	Decode([]byte) (interface{}, int, error)
 }
 
-// EventListener listen for session
+// EventListener listener for session event
 type EventListener interface {
-	// OnMessage runs when the session gets a pkg
-	OnMessage(s Session, pkg interface{})
 	// OnConnect runs when the connection initialized
 	OnConnect(s Session)
-	// OnClose runs before the session closed
-	OnClose(s Session)
+	// OnMessage runs when the session gets a pkg
+	OnMessage(s Session, pkg interface{})
 	// OnError runs when the session err
 	OnError(s Session, e error)
+	// OnClose runs before the session closed
+	OnClose(s Session)
 }
