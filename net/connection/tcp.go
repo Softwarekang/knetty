@@ -57,7 +57,7 @@ func NewTcpConn(conn net.Conn) (*TcpConn, error) {
 			localAddress:       localAddress,
 			remoteAddress:      remoteAddress,
 			poller:             poll.PollerManager.Pick(),
-			inputBuffer:        buffer.NewByteBuffer(),
+			inputBuffer:        buffer.NewRingBuffer(),
 			outputBuffer:       buffer.NewByteBuffer(),
 			waitBufferChan:     make(chan struct{}, 1),
 			writeNetBufferChan: make(chan struct{}, 1),
@@ -115,7 +115,7 @@ func (t *TcpConn) Next(n int) ([]byte, error) {
 	}
 
 	p := make([]byte, n)
-	if _, err := t.read(p); err != nil {
+	if _, err := t.inputBuffer.Read(p); err != nil {
 		return nil, err
 	}
 
@@ -128,7 +128,7 @@ func (t *TcpConn) Read(p []byte) (int, error) {
 		return 0, err
 	}
 
-	return t.read(p)
+	return t.inputBuffer.Read(p)
 }
 
 func (t *TcpConn) waitReadBuffer(n int, timeout bool) error {
@@ -169,21 +169,6 @@ func (t *TcpConn) waitWithTimeout(n int) error {
 	}
 
 	return nil
-}
-
-func (t *TcpConn) read(p []byte) (int, error) {
-	for {
-		if !t.isActive() {
-			return 0, merr.ConnClosedErr
-		}
-		// todo: Using a backoff mechanism to optimize the read function
-		if t.inputBuffer.Len() == 0 {
-			time.Sleep(1 * time.Second)
-			continue
-		}
-
-		return t.inputBuffer.Read(p)
-	}
 }
 
 // WriteBuffer .

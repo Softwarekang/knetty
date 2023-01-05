@@ -72,7 +72,7 @@ type knettyConn struct {
 	localAddress       string
 	remoteAddress      string
 	poller             poll.Poll
-	inputBuffer        *buffer.ByteBuffer
+	inputBuffer        *buffer.RingBuffer
 	outputBuffer       *buffer.ByteBuffer
 	closeCallBackFn    CloseCallBackFunc
 	waitBufferSize     atomic.Int64
@@ -107,18 +107,10 @@ func (c *knettyConn) initNetFd() {
 
 // OnRead refactor for conn
 func (c *knettyConn) OnRead() error {
-	// 0.25m bytes
-	bytes := make([]byte, 256)
-	n, err := syscall.Read(c.fd, bytes)
-	if err != nil {
-		if err != syscall.EAGAIN {
-			return err
-		}
-	}
-
-	if err := c.inputBuffer.Write(bytes[:n]); err != nil {
+	if _, err := c.inputBuffer.CopyFromFd(c.fd); err != nil {
 		return err
 	}
+
 	waitBufferSize := c.waitBufferSize.Load()
 	if waitBufferSize > 0 && int64(c.inputBuffer.Len()) > waitBufferSize {
 		c.waitBufferChan <- struct{}{}

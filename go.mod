@@ -6,6 +6,7 @@ require (
 	github.com/evanphx/wildcat v0.0.0-20141114174135-e7012f664567
 	github.com/stretchr/testify v1.3.0
 	go.uber.org/atomic v1.10.0
+	golang.org/x/sys v0.4.0
 )
 
 require (

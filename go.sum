@@ -12,3 +12,5 @@ github.com/vektra/errors v0.0.0-20140903201135-c64d83aba85a h1:lUVfiMMY/te9icPKB
 github.com/vektra/errors v0.0.0-20140903201135-c64d83aba85a/go.mod h1:KUxJS71XlMs+ztT+RzsLRoWUQRUpECo/+Rb0EBk8/Wc=
 go.uber.org/atomic v1.10.0 h1:9qC72Qh0+3MqyJbAn8YU5xVq1frD8bn3JtD2oXtafVQ=
 go.uber.org/atomic v1.10.0/go.mod h1:LUxbIzbOniOlMKjJjyPfpl4v+PKK2cNJn91OQbhoJI0=
+golang.org/x/sys v0.4.0 h1:Zr2JFtRQNX3BCZ8YtxRE9hNJYC8J6I1MVbMg6owUp18=
+golang.org/x/sys v0.4.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
