@@ -2,7 +2,6 @@
 package connection
 
 import (
-	"syscall"
 	"time"
 
 	"github.com/Softwarekang/knetty/net/poll"
@@ -66,7 +65,6 @@ type knettyConn struct {
 	fd                 int
 	readTimeOut        *atomic.Duration
 	writeTimeOut       *atomic.Duration
-	remoteSocketAddr   syscall.Sockaddr
 	localAddress       string
 	remoteAddress      string
 	poller             poll.Poll
