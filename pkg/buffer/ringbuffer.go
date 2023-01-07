@@ -81,6 +81,35 @@ func (r *RingBuffer) CopyFromFd(fd int) (int, error) {
 	return n, nil
 }
 
+// WriteToFd .
+func (r *RingBuffer) WriteToFd(fd int) (int, error) {
+	rw := r.w
+	if rw == r.r {
+		return 0, syscall.EAGAIN
+	}
+
+	writeIndex, readIndex := r.index(rw), r.index(r.r)
+	if readIndex < writeIndex {
+		n, err := syscall.Write(fd, r.p[readIndex:writeIndex])
+		if err != nil {
+			return 0, err
+		}
+		r.r += n
+		return n, nil
+	}
+
+	bs := [][]byte{
+		r.p[readIndex:],
+		r.p[:writeIndex],
+	}
+	n, err := msycall.Writev(fd, bs)
+	if err != nil {
+		return 0, err
+	}
+	r.r += n
+	return n, nil
+}
+
 // Write .
 func (r *RingBuffer) Write(p []byte) (int, error) {
 	rr := r.r

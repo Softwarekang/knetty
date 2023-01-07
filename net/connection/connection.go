@@ -50,7 +50,7 @@ type Connection interface {
 	// Read will return max len(p) data
 	Read(p []byte) (int, error)
 	// WriteBuffer will write bytes to conn buffer
-	WriteBuffer(bytes []byte) error
+	WriteBuffer(bytes []byte) (int, error)
 	// FlushBuffer will send conn buffer data to net
 	FlushBuffer() error
 	// SetCloseCallBack set close callback fun when conn on interrupt
@@ -73,7 +73,7 @@ type knettyConn struct {
 	remoteAddress      string
 	poller             poll.Poll
 	inputBuffer        *buffer.RingBuffer
-	outputBuffer       *buffer.ByteBuffer
+	outputBuffer       *buffer.RingBuffer
 	closeCallBackFn    CloseCallBackFunc
 	waitBufferSize     atomic.Int64
 	netFd              *poll.NetFileDesc
@@ -120,12 +120,10 @@ func (c *knettyConn) OnRead() error {
 
 // OnWrite refactor for conn
 func (c *knettyConn) OnWrite() error {
-	n, err := syscall.SendmsgN(c.fd, c.outputBuffer.Bytes(), nil, c.remoteSocketAddr, 0)
-	if err != nil && err != syscall.EAGAIN {
+	if _, err := c.outputBuffer.WriteToFd(c.fd); err != nil && err != syscall.EAGAIN {
 		return err
 	}
 
-	c.outputBuffer.Release(n)
 	if c.outputBuffer.IsEmpty() {
 		if err := c.Register(poll.RwToRead); err != nil {
 			return err

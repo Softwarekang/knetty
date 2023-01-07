@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"syscall"
 	"time"
 
 	"github.com/Softwarekang/knetty"
@@ -32,10 +33,12 @@ func newSessionCallBackFn(s session.Session) error {
 }
 
 func sendHello(s session.Session) {
-	if err := s.WritePkg("hello"); err != nil {
+	n, err := s.WritePkg("hello")
+	if err != nil && err != syscall.EAGAIN {
 		log.Println(err)
 	}
 
+	fmt.Printf("client session send %v bytes data to server\n", n)
 	if err := s.FlushBuffer(); err != nil {
 		log.Println(err)
 	}
@@ -77,6 +80,7 @@ type pkgListener struct {
 func (e *pkgListener) OnMessage(s session.Session, pkg interface{}) {
 	data := pkg.(string)
 	fmt.Printf("client got data:%s\n", data)
+	sendHello(s)
 }
 
 func (e *pkgListener) OnConnect(s session.Session) {

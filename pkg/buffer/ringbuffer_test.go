@@ -331,6 +331,113 @@ func TestRingBuffer_CopyFromFd(t *testing.T) {
 	assert.Equal(t, "o1234567", string(ringBuffer.Bytes()))
 }
 
+func TestRingBuffer_WriteToFd(t *testing.T) {
+	g := sync.WaitGroup{}
+	w := make(chan struct{}, 1)
+
+	var (
+		rfd int
+		wfd int
+	)
+	g.Add(2)
+	go func() {
+		l, err := net.Listen("tcp", "127.0.0.1:10001")
+		if err != nil {
+			t.Errorf("net listen err:%v", err)
+		}
+
+		w <- struct{}{}
+		rconn, err := l.Accept()
+		if err != nil {
+			t.Errorf("net accept err:%v", err)
+		}
+
+		f, _ := rconn.(*net.TCPConn).File()
+		rfd = int(f.Fd())
+		g.Done()
+	}()
+
+	go func() {
+		<-w
+		wconn, err := net.Dial("tcp", "127.0.0.1:10001")
+		if err != nil {
+			t.Errorf("net dial err:%v", err)
+		}
+
+		f, _ := wconn.(*net.TCPConn).File()
+		wfd = int(f.Fd())
+		g.Done()
+	}()
+
+	g.Wait()
+
+	readRingBuffer := NewRingBufferWithCap(5)
+	writeRingBuffer := NewRingBufferWithCap(10)
+
+	n, err := writeRingBuffer.WriteString("hello")
+	assert.Equal(t, 5, n)
+	assert.Nil(t, err)
+
+	n, err = writeRingBuffer.WriteToFd(wfd)
+	assert.Equal(t, 5, n)
+	assert.Nil(t, err)
+
+	n, err = readRingBuffer.CopyFromFd(rfd)
+	assert.Equal(t, 5, n)
+	assert.Nil(t, err)
+	assert.Equal(t, "hello", string(readRingBuffer.Bytes()))
+
+	readRingBuffer.Release(2)
+	assert.Equal(t, "llo", string(readRingBuffer.Bytes()))
+
+	n, err = writeRingBuffer.WriteString("12345")
+	assert.Equal(t, 5, n)
+	assert.Nil(t, err)
+
+	n, err = writeRingBuffer.WriteToFd(wfd)
+	assert.Equal(t, 5, n)
+	assert.Nil(t, err)
+
+	n, err = readRingBuffer.CopyFromFd(rfd)
+	assert.Equal(t, 5, n)
+	assert.Nil(t, err)
+	assert.Equal(t, "llo12345", string(readRingBuffer.Bytes()))
+
+	readRingBuffer.Release(2)
+	assert.Equal(t, "o12345", string(readRingBuffer.Bytes()))
+
+	n, err = writeRingBuffer.WriteString("67891")
+	assert.Equal(t, 5, n)
+	assert.Nil(t, err)
+
+	n, err = writeRingBuffer.WriteToFd(wfd)
+	assert.Equal(t, 5, n)
+	assert.Nil(t, err)
+
+	n, err = readRingBuffer.CopyFromFd(rfd)
+	assert.Equal(t, 2, n)
+	assert.Nil(t, err)
+	assert.Equal(t, "o1234567", string(readRingBuffer.Bytes()))
+
+	n, err = readRingBuffer.CopyFromFd(rfd)
+	assert.Equal(t, 0, n)
+	assert.Equal(t, syscall.EAGAIN, err)
+	assert.Equal(t, "o1234567", string(readRingBuffer.Bytes()))
+
+	n, err = writeRingBuffer.WriteString("23456")
+	assert.Equal(t, 5, n)
+	assert.Nil(t, err)
+
+	n, err = writeRingBuffer.WriteToFd(wfd)
+	assert.Equal(t, 5, n)
+	assert.Nil(t, err)
+
+	n, err = writeRingBuffer.WriteToFd(wfd)
+	assert.Equal(t, 0, n)
+	assert.Equal(t, syscall.EAGAIN, err)
+
+}
+
 func TestRingBufferRWRace(t *testing.T) {
 	var (
 		totalW  int

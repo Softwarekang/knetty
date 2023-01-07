@@ -36,9 +36,9 @@ type Session interface {
 	// WritePkg will encode any type of data as a []byte type using the codec and writes it to the conn buffer.
 	// If you want the other end of the network to receive it,
 	// call the FlushBuffer API to send all the data from the conn buffer out
-	WritePkg(pkg interface{}) error
+	WritePkg(pkg interface{}) (int, error)
 	// WriteBuffer will write bytes to conn buffer
-	WriteBuffer(bytes []byte) error
+	WriteBuffer(bytes []byte) (int, error)
 	// FlushBuffer will send conn buffer data to net
 	FlushBuffer() error
 	/*
@@ -113,20 +113,17 @@ func (s *session) SetEventListener(eventListener EventListener) {
 }
 
 // WritePkg .
-func (s *session) WritePkg(pkg interface{}) error {
+func (s *session) WritePkg(pkg interface{}) (int, error) {
 	data, err := s.pkgCodec.Encode(pkg)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	if err := s.conn.WriteBuffer(data); err != nil {
-		return err
-	}
-	return nil
+	return s.conn.WriteBuffer(data)
 }
 
 // WriteBuffer .
-func (s *session) WriteBuffer(data []byte) error {
+func (s *session) WriteBuffer(data []byte) (int, error) {
 	return s.conn.WriteBuffer(data)
 }
 

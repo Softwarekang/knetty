@@ -50,15 +50,16 @@ func NewTcpConn(conn net.Conn) (*TcpConn, error) {
 	_ = msyscall.SetConnectionNoBlock(fd)
 	return &TcpConn{
 		knettyConn: knettyConn{
-			fd:                 fd,
-			remoteSocketAddr:   remoteSocketAddr,
-			readTimeOut:        atomic.NewDuration(netIOTimeout),
-			writeTimeOut:       atomic.NewDuration(netIOTimeout),
-			localAddress:       localAddress,
-			remoteAddress:      remoteAddress,
-			poller:             poll.PollerManager.Pick(),
+			fd:               fd,
+			remoteSocketAddr: remoteSocketAddr,
+			readTimeOut:      atomic.NewDuration(netIOTimeout),
+			writeTimeOut:     atomic.NewDuration(netIOTimeout),
+			localAddress:     localAddress,
+			remoteAddress:    remoteAddress,
+			poller:           poll.PollerManager.Pick(),
+			// todo:pref ring buffer size can be set
 			inputBuffer:        buffer.NewRingBuffer(),
-			outputBuffer:       buffer.NewByteBuffer(),
+			outputBuffer:       buffer.NewRingBuffer(),
 			waitBufferChan:     make(chan struct{}, 1),
 			writeNetBufferChan: make(chan struct{}, 1),
 		},
@@ -160,7 +161,6 @@ func (t *TcpConn) waitWithTimeout(n int) error {
 		case <-ctx.Done():
 			return merr.NetIOTimeoutErr
 		case <-t.waitBufferChan:
-
 		}
 
 		if !t.isActive() {
@@ -172,19 +172,17 @@ func (t *TcpConn) waitWithTimeout(n int) error {
 }
 
 // WriteBuffer .
-func (t *TcpConn) WriteBuffer(bytes []byte) error {
+func (t *TcpConn) WriteBuffer(bytes []byte) (int, error) {
 	return t.outputBuffer.Write(bytes)
 }
 
 // FlushBuffer .
 func (t *TcpConn) FlushBuffer() error {
-	n, err := syscall.SendmsgN(t.fd, t.outputBuffer.Bytes(), nil, t.remoteSocketAddr, 0)
-	if err != nil && err != syscall.EAGAIN {
+	if _, err := t.outputBuffer.WriteToFd(t.fd); err != nil && err != syscall.EAGAIN {
 		return err
 	}
 
-	t.outputBuffer.Release(n)
-	if t.outputBuffer.Len() == 0 {
+	if t.outputBuffer.IsEmpty() {
 		return nil
 	}
 
