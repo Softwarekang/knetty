@@ -89,6 +89,7 @@ func main() {
 	// kill -2 is syscall.SIGINT
 	// kill -9 is syscall.SIGKILL but can't be caught, so don't need to add it
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	log.Printf("server pid:%d", os.Getpid())
 	<-quit
 	log.Println("shutting down server...")
 
@@ -178,10 +179,6 @@ func (c codec) Decode(bytes []byte) (interface{}, int, error) {
 go run ./example/server/server/server.go
 ```
 
-## View server start-up code examples
-
-cat server.go
-
 ```sh
 # view client start up code examples
 cat client.go
@@ -194,6 +191,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"syscall"
 	"time"
 
 	"github.com/Softwarekang/knetty"
@@ -222,10 +220,12 @@ func newSessionCallBackFn(s session.Session) error {
 }
 
 func sendHello(s session.Session) {
-	if err := s.WritePkg("hello"); err != nil {
+	n, err := s.WritePkg("hello")
+	if err != nil && err != syscall.EAGAIN {
 		log.Println(err)
 	}
 
+	fmt.Printf("client session send %v bytes data to server\n", n)
 	if err := s.FlushBuffer(); err != nil {
 		log.Println(err)
 	}
@@ -267,6 +267,7 @@ type pkgListener struct {
 func (e *pkgListener) OnMessage(s session.Session, pkg interface{}) {
 	data := pkg.(string)
 	fmt.Printf("client got data:%s\n", data)
+	sendHello(s)
 }
 
 func (e *pkgListener) OnConnect(s session.Session) {

@@ -42,23 +42,19 @@ func NewTcpConn(conn net.Conn) (*TcpConn, error) {
 		return nil, err
 	}
 
-	remoteSocketAddr, err := mnet.ResolveNetAddrToSocketAddr(conn.RemoteAddr())
-	if err != nil {
-		return nil, err
-	}
 	// set conn no block
 	_ = msyscall.SetConnectionNoBlock(fd)
 	return &TcpConn{
 		knettyConn: knettyConn{
-			fd:                 fd,
-			remoteSocketAddr:   remoteSocketAddr,
-			readTimeOut:        atomic.NewDuration(netIOTimeout),
-			writeTimeOut:       atomic.NewDuration(netIOTimeout),
-			localAddress:       localAddress,
-			remoteAddress:      remoteAddress,
-			poller:             poll.PollerManager.Pick(),
-			inputBuffer:        buffer.NewByteBuffer(),
-			outputBuffer:       buffer.NewByteBuffer(),
+			fd:            fd,
+			readTimeOut:   atomic.NewDuration(netIOTimeout),
+			writeTimeOut:  atomic.NewDuration(netIOTimeout),
+			localAddress:  localAddress,
+			remoteAddress: remoteAddress,
+			poller:        poll.PollerManager.Pick(),
+			// todo:fix use options set buffer size
+			inputBuffer:        buffer.NewRingBuffer(),
+			outputBuffer:       buffer.NewRingBuffer(),
 			waitBufferChan:     make(chan struct{}, 1),
 			writeNetBufferChan: make(chan struct{}, 1),
 		},
@@ -115,7 +111,7 @@ func (t *TcpConn) Next(n int) ([]byte, error) {
 	}
 
 	p := make([]byte, n)
-	if _, err := t.read(p); err != nil {
+	if _, err := t.inputBuffer.Read(p); err != nil {
 		return nil, err
 	}
 
@@ -128,7 +124,7 @@ func (t *TcpConn) Read(p []byte) (int, error) {
 		return 0, err
 	}
 
-	return t.read(p)
+	return t.inputBuffer.Read(p)
 }
 
 func (t *TcpConn) waitReadBuffer(n int, timeout bool) error {
@@ -160,7 +156,6 @@ func (t *TcpConn) waitWithTimeout(n int) error {
 		case <-ctx.Done():
 			return merr.NetIOTimeoutErr
 		case <-t.waitBufferChan:
-
 		}
 
 		if !t.isActive() {
@@ -171,35 +166,18 @@ func (t *TcpConn) waitWithTimeout(n int) error {
 	return nil
 }
 
-func (t *TcpConn) read(p []byte) (int, error) {
-	for {
-		if !t.isActive() {
-			return 0, merr.ConnClosedErr
-		}
-		// todo: Using a backoff mechanism to optimize the read function
-		if t.inputBuffer.Len() == 0 {
-			time.Sleep(1 * time.Second)
-			continue
-		}
-
-		return t.inputBuffer.Read(p)
-	}
-}
-
 // WriteBuffer .
-func (t *TcpConn) WriteBuffer(bytes []byte) error {
+func (t *TcpConn) WriteBuffer(bytes []byte) (int, error) {
 	return t.outputBuffer.Write(bytes)
 }
 
 // FlushBuffer .
 func (t *TcpConn) FlushBuffer() error {
-	n, err := syscall.SendmsgN(t.fd, t.outputBuffer.Bytes(), nil, t.remoteSocketAddr, 0)
-	if err != nil && err != syscall.EAGAIN {
+	if _, err := t.outputBuffer.WriteToFd(t.fd); err != nil && err != syscall.EAGAIN {
 		return err
 	}
 
-	t.outputBuffer.Release(n)
-	if t.outputBuffer.Len() == 0 {
+	if t.outputBuffer.IsEmpty() {
 		return nil
 	}
 

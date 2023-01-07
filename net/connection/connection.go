@@ -2,13 +2,10 @@
 package connection
 
 import (
-	"log"
-	"syscall"
 	"time"
 
 	"github.com/Softwarekang/knetty/net/poll"
 	"github.com/Softwarekang/knetty/pkg/buffer"
-
 	"go.uber.org/atomic"
 )
 
@@ -50,7 +47,7 @@ type Connection interface {
 	// Read will return max len(p) data
 	Read(p []byte) (int, error)
 	// WriteBuffer will write bytes to conn buffer
-	WriteBuffer(bytes []byte) error
+	WriteBuffer(bytes []byte) (int, error)
 	// FlushBuffer will send conn buffer data to net
 	FlushBuffer() error
 	// SetCloseCallBack set close callback fun when conn on interrupt
@@ -68,12 +65,11 @@ type knettyConn struct {
 	fd                 int
 	readTimeOut        *atomic.Duration
 	writeTimeOut       *atomic.Duration
-	remoteSocketAddr   syscall.Sockaddr
 	localAddress       string
 	remoteAddress      string
 	poller             poll.Poll
-	inputBuffer        *buffer.ByteBuffer
-	outputBuffer       *buffer.ByteBuffer
+	inputBuffer        *buffer.RingBuffer
+	outputBuffer       *buffer.RingBuffer
 	closeCallBackFn    CloseCallBackFunc
 	waitBufferSize     atomic.Int64
 	netFd              *poll.NetFileDesc
@@ -103,64 +99,6 @@ func (c *knettyConn) initNetFd() {
 			OnInterrupt: c.OnInterrupt,
 		},
 	}
-}
-
-// OnRead refactor for conn
-func (c *knettyConn) OnRead() error {
-	// 0.25m bytes
-	bytes := make([]byte, 256)
-	n, err := syscall.Read(c.fd, bytes)
-	if err != nil {
-		if err != syscall.EAGAIN {
-			return err
-		}
-	}
-
-	if err := c.inputBuffer.Write(bytes[:n]); err != nil {
-		return err
-	}
-	waitBufferSize := c.waitBufferSize.Load()
-	if waitBufferSize > 0 && int64(c.inputBuffer.Len()) > waitBufferSize {
-		c.waitBufferChan <- struct{}{}
-	}
-	return nil
-}
-
-// OnWrite refactor for conn
-func (c *knettyConn) OnWrite() error {
-	n, err := syscall.SendmsgN(c.fd, c.outputBuffer.Bytes(), nil, c.remoteSocketAddr, 0)
-	if err != nil && err != syscall.EAGAIN {
-		return err
-	}
-
-	c.outputBuffer.Release(n)
-	if c.outputBuffer.IsEmpty() {
-		if err := c.Register(poll.RwToRead); err != nil {
-			return err
-		}
-
-		c.writeNetBufferChan <- struct{}{}
-	}
-	return nil
-}
-
-// OnInterrupt refactor for conn
-func (c *knettyConn) OnInterrupt() error {
-	c.close.Store(1)
-	c.closeWaitBufferCh()
-	if err := c.poller.Register(&poll.NetFileDesc{
-		FD: c.fd,
-	}, poll.DeleteRead); err != nil {
-		return err
-	}
-
-	if err := c.closeCallBackFn; err != nil {
-		err := c.closeCallBackFn()
-		if err != nil {
-			log.Println(err)
-		}
-	}
-	return nil
 }
 
 func (c *knettyConn) closeWaitBufferCh() {
