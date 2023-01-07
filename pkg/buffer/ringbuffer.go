@@ -3,13 +3,15 @@ package buffer
 import (
 	"syscall"
 
+	"github.com/Softwarekang/knetty/pkg/math"
 	msycall "github.com/Softwarekang/knetty/pkg/syscall"
 )
 
 const (
-	// 64 kb
+	// defaultCacheSize default cache size 64 kb
 	defaultCacheSize = 64 * K
-	maxCacheSize     = 1 * G
+	// maxCacheSize max cache size 1 GB
+	maxCacheSize = 1 * G
 )
 
 const (
@@ -39,7 +41,7 @@ func NewRingBufferWithCap(cap int) *RingBuffer {
 	}
 
 	if (cap & (cap - 1)) != 0 {
-		cap = min(adjust(cap), maxCacheSize)
+		cap = math.Min(adjust(cap), maxCacheSize)
 	}
 
 	return &RingBuffer{
@@ -129,7 +131,7 @@ func (r *RingBuffer) Write(p []byte) (int, error) {
 		return n, nil
 	}
 
-	writeableSize := min(r.cap+readIndex-writeIndex, l)
+	writeableSize := math.Min(r.cap+readIndex-writeIndex, l)
 	n := copy(r.p[writeIndex:], p)
 	if n < writeableSize {
 		n += copy(r.p[:readIndex], p[n:])
@@ -158,7 +160,7 @@ func (r *RingBuffer) Read(p []byte) (int, error) {
 		return n, nil
 	}
 
-	readableSize := min(r.readableSize(rw), l)
+	readableSize := math.Min(r.readableSize(rw), l)
 	n := copy(p, r.p[readIndex:])
 	if n < readableSize {
 		n += copy(p[n:], r.p[:writeIndex])
@@ -260,11 +262,4 @@ func adjust(n int) int {
 	n |= n >> 8
 	n |= n >> 16
 	return n + 1
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

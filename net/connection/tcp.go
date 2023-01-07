@@ -42,22 +42,17 @@ func NewTcpConn(conn net.Conn) (*TcpConn, error) {
 		return nil, err
 	}
 
-	remoteSocketAddr, err := mnet.ResolveNetAddrToSocketAddr(conn.RemoteAddr())
-	if err != nil {
-		return nil, err
-	}
 	// set conn no block
 	_ = msyscall.SetConnectionNoBlock(fd)
 	return &TcpConn{
 		knettyConn: knettyConn{
-			fd:               fd,
-			remoteSocketAddr: remoteSocketAddr,
-			readTimeOut:      atomic.NewDuration(netIOTimeout),
-			writeTimeOut:     atomic.NewDuration(netIOTimeout),
-			localAddress:     localAddress,
-			remoteAddress:    remoteAddress,
-			poller:           poll.PollerManager.Pick(),
-			// todo:pref ring buffer size can be set
+			fd:            fd,
+			readTimeOut:   atomic.NewDuration(netIOTimeout),
+			writeTimeOut:  atomic.NewDuration(netIOTimeout),
+			localAddress:  localAddress,
+			remoteAddress: remoteAddress,
+			poller:        poll.PollerManager.Pick(),
+			// todo:fix use options set buffer size
 			inputBuffer:        buffer.NewRingBuffer(),
 			outputBuffer:       buffer.NewRingBuffer(),
 			waitBufferChan:     make(chan struct{}, 1),
