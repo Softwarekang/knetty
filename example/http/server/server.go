@@ -81,7 +81,7 @@ func echoHello(s session.Session, data string) error {
 	rsp = time.Now().AppendFormat(rsp, "Mon, 02 Jan 2006 15:04:05 GMT")
 	rsp = append(rsp, fmt.Sprintf("\r\nContent-Length: %d\r\n\r\n%s!", len(data)+1, data)...)
 
-	if err := s.WriteBuffer(rsp); err != nil {
+	if _, err := s.WriteBuffer(rsp); err != nil {
 		return err
 	}
 
