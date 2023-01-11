@@ -3,7 +3,6 @@ package knetty
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"net/netip"
 	"sync"
@@ -11,6 +10,7 @@ import (
 	"github.com/Softwarekang/knetty/net/connection"
 	"github.com/Softwarekang/knetty/net/poll"
 	merr "github.com/Softwarekang/knetty/pkg/err"
+	"github.com/Softwarekang/knetty/pkg/log"
 	"github.com/Softwarekang/knetty/session"
 )
 
@@ -35,8 +35,9 @@ func NewServer(network, address string, opts ...ServerOption) *Server {
 		sessions: make(map[session.Session]struct{}),
 		closeCh:  make(chan struct{}),
 	}
+
 	opts = append(opts, withServerNetwork(network), withServerAddress(address))
-	for _, opt := range opts {
+	for _, opt := range mergeCustomServerOptions(opts...) {
 		opt(&s.ServerOptions)
 	}
 
@@ -88,7 +89,7 @@ func (s *Server) listenTcp() error {
 		return err
 	}
 
-	fmt.Printf("sever started listen on: [%s]....", s.address)
+	log.Infof("sever started listen on: [%s]....", s.address)
 	s.waitQuit()
 	return nil
 }
@@ -123,7 +124,7 @@ func (s *Server) onRead() error {
 	s.mu.Unlock()
 	go func() {
 		if err := newSession.Run(); err != nil {
-			log.Println(err)
+			log.Errorf("server session init err:%v", err)
 		}
 	}()
 
@@ -161,14 +162,14 @@ func (s *Server) Shutdown(ctx context.Context) error {
 			s.closeServerCloseCh()
 			if s.tcpListener != nil {
 				if err := s.tcpListener.Close(); err != nil {
-					log.Printf("tcpListener closeCh err caused by:%s", err.Error())
+					log.Errorf("tcpListener closeCh err caused by:%s", err.Error())
 				}
 			}
 
 			s.mu.Lock()
 			for ss := range s.sessions {
 				if err := ss.Close(); err != nil {
-					log.Printf("session closeCh err caused by:%s", err.Error())
+					log.Errorf("session closeCh err caused by:%s", err.Error())
 				}
 			}
 			s.mu.Unlock()

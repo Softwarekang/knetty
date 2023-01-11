@@ -166,10 +166,7 @@ func (s *session) Info() string {
 
 // Close .
 func (s *session) Close() error {
-	if err := s.onClose(); err != nil {
-		return err
-	}
-
+	s.onClose()
 	return s.conn.Close()
 }
 
@@ -206,7 +203,6 @@ func (s *session) handleTcpPkg() error {
 	buf := buffer.NewByteBuffer()
 	for {
 		if !s.isActive() {
-			fmt.Println("session closed")
 			return nil
 		}
 
@@ -236,12 +232,11 @@ func (s *session) handleTcpPkg() error {
 	}
 }
 
-func (s *session) onClose() error {
+func (s *session) onClose() {
 	if !s.isActive() {
-		return nil
+		return
 	}
 
 	s.close.Store(1)
 	s.eventListener.OnClose(s)
-	return nil
 }

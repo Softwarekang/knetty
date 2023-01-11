@@ -1,7 +1,6 @@
 package connection
 
 import (
-	"log"
 	"syscall"
 
 	"github.com/Softwarekang/knetty/net/poll"
@@ -47,10 +46,7 @@ func (c *knettyConn) OnInterrupt() error {
 	}
 
 	if err := c.closeCallBackFn; err != nil {
-		err := c.closeCallBackFn()
-		if err != nil {
-			log.Println(err)
-		}
+		c.closeCallBackFn()
 	}
 	return nil
 }

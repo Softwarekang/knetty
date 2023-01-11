@@ -3,12 +3,12 @@ package knetty
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 
 	"github.com/Softwarekang/knetty/net/connection"
 	"github.com/Softwarekang/knetty/net/poll"
 	merr "github.com/Softwarekang/knetty/pkg/err"
+	"github.com/Softwarekang/knetty/pkg/log"
 	"github.com/Softwarekang/knetty/session"
 )
 
@@ -28,7 +28,7 @@ func NewClient(network, address string, opts ...ClientOption) *Client {
 		closeCh: make(chan struct{}),
 	}
 	opts = append(opts, withClientNetwork(network), withClientAddress(address))
-	for _, opt := range opts {
+	for _, opt := range mergeCustomClientOptions(opts...) {
 		opt(&c.ClientOptions)
 	}
 
@@ -63,7 +63,7 @@ func (c *Client) tcpEventloop() error {
 	c.session = newSession
 	go func() {
 		if err := newSession.Run(); err != nil {
-			log.Println(err)
+			log.Errorf("session init err:%s", err.Error())
 		}
 	}()
 

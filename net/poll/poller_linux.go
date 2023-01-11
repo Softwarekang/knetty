@@ -7,6 +7,7 @@ import (
 	"syscall"
 	"unsafe"
 
+	"github.com/Softwarekang/knetty/pkg/log"
 	msyscall "github.com/Softwarekang/knetty/pkg/syscall"
 )
 
@@ -70,7 +71,7 @@ func (e *Epoll) Wait() error {
 			if event.Events&(syscall.EPOLLHUP|syscall.EPOLLRDHUP|syscall.EPOLLERR) != 0 {
 				if netFD.OnInterrupt != nil {
 					if err := netFD.OnInterrupt(); err != nil {
-						fmt.Printf("netFD onInterrupt err:%v", err)
+						log.Errorf("netFD onInterrupt err:%v", err)
 					}
 				}
 				continue
@@ -80,7 +81,7 @@ func (e *Epoll) Wait() error {
 			if event.Events&syscall.EPOLLIN != 0 {
 				if netFD.OnRead != nil {
 					if err := netFD.OnRead(); err != nil {
-						fmt.Printf("netFD OnRead err:%v", err)
+						log.Errorf("netFD OnRead err:%v", err)
 					}
 				}
 				continue
@@ -90,7 +91,7 @@ func (e *Epoll) Wait() error {
 			if event.Events&syscall.EPOLLOUT != 0 {
 				if netFD.OnWrite != nil {
 					if err := netFD.OnWrite(); err != nil {
-						fmt.Printf("netFD OnWrite err:%v", err)
+						log.Errorf("netFD OnWrite err:%v", err)
 					}
 				}
 				continue

@@ -16,7 +16,16 @@ import (
 	"github.com/Softwarekang/knetty/session"
 
 	"github.com/evanphx/wildcat"
+	"github.com/sirupsen/logrus"
 )
+
+var (
+	logger *logrus.Logger
+)
+
+func init() {
+	initLogger()
+}
 
 func main() {
 	// setting optional options for the server
@@ -24,6 +33,7 @@ func main() {
 		knetty.WithServiceNewSessionCallBackFunc(newSessionCallBackFn),
 	}
 
+	knetty.SetLogger(logger)
 	// creating a new server with network settings such as tcp/upd, address such as 127.0.0.1:8000, and optional options
 	server := knetty.NewServer("tcp", "127.0.0.1:8000", options...)
 	// Initializing the server in a goroutine so that
@@ -42,7 +52,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	log.Printf("server pid:%d", os.Getpid())
 	<-quit
-	log.Println("shutting down server...")
+	logger.Infof("shutting down server...")
 
 	// The context is used to inform the server it has 5 seconds to finish
 	// the request it is currently handling
@@ -50,10 +60,21 @@ func main() {
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		log.Fatal("server starting shutdown:", err)
+		logger.Fatal("server starting shutdown:", err)
 	}
 
-	log.Println("server exiting")
+	logger.Info("server exiting")
+}
+
+func initLogger() {
+	logger = logrus.StandardLogger()
+	logger.SetOutput(os.Stdout)
+	logger.SetLevel(logrus.DebugLevel)
+	logrus.SetFormatter(&logrus.TextFormatter{
+		ForceQuote:      true,
+		TimestampFormat: "2006-01-02 15:04:05",
+		FullTimestamp:   true,
+	})
 }
 
 // set the necessary parameters for the session to run.
@@ -70,9 +91,9 @@ type httpEventListener struct {
 
 func (e *httpEventListener) OnMessage(s session.Session, pkg interface{}) {
 	data := pkg.(string)
-	fmt.Printf("server got data:%s\n", data)
+	logger.Infof("server got data:%s", data)
 	if err := echoHello(s, data); err != nil {
-		log.Printf("server echo err:%v", err)
+		logger.Info("server echo err:%v", err)
 	}
 }
 
@@ -89,15 +110,15 @@ func echoHello(s session.Session, data string) error {
 }
 
 func (e *httpEventListener) OnConnect(s session.Session) {
-	fmt.Printf("local:%s get a remote:%s connection\n", s.LocalAddr(), s.RemoteAddr())
+	logger.Infof("local:%s get a remote:%s connection\n", s.LocalAddr(), s.RemoteAddr())
 }
 
 func (e *httpEventListener) OnClose(s session.Session) {
-	fmt.Printf("server session: %s closed\n", s.Info())
+	logger.Infof("server client:%s  closed", s.RemoteAddr())
 }
 
 func (e *httpEventListener) OnError(s session.Session, err error) {
-	fmt.Printf("session: %s got err :%v\n", s.Info(), err)
+	logger.Errorf("session: %s got err :%v", s.Info(), err)
 }
 
 type httpEchoCodec struct {
