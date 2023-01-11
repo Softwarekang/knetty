@@ -93,7 +93,7 @@ func (e *httpEventListener) OnMessage(s session.Session, pkg interface{}) {
 	data := pkg.(string)
 	logger.Infof("server got data:%s", data)
 	if err := echoHello(s, data); err != nil {
-		logger.Info("server echo err:%v", err)
+		logger.Infof("server echo err:%v", err)
 	}
 }
 

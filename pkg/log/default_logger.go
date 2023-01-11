@@ -19,33 +19,33 @@ type defaultLogger struct {
 }
 
 func (l defaultLogger) Errorf(format string, args ...interface{}) {
-	log.Printf(format, args)
+	log.Printf(format, args...)
 }
 
 func (l defaultLogger) Fatalf(format string, args ...interface{}) {
-	log.Fatalf(format, args)
+	log.Fatalf(format, args...)
 }
 
 func (l defaultLogger) Fatal(args ...interface{}) {
-	log.Fatal(args)
+	log.Fatal(args...)
 }
 
 func (l defaultLogger) Infof(format string, args ...interface{}) {
-	log.Printf(format, args)
+	log.Printf(format, args...)
 }
 
 func (l defaultLogger) Info(args ...interface{}) {
-	log.Print(args)
+	log.Print(args...)
 }
 
 func (l defaultLogger) Warnf(format string, args ...interface{}) {
-	log.Printf(format, args)
+	log.Printf(format, args...)
 }
 
 func (l defaultLogger) Debugf(format string, args ...interface{}) {
-	log.Printf(format, args)
+	log.Printf(format, args...)
 }
 
 func (l defaultLogger) Debug(args ...interface{}) {
-	log.Print(args)
+	log.Print(args...)
 }
