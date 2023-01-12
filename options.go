@@ -1,6 +1,8 @@
 package knetty
 
-import "github.com/Softwarekang/knetty/session"
+import (
+	"github.com/Softwarekang/knetty/session"
+)
 
 /*
 NewSessionCallBackFunc It is executed when a new session is established,
@@ -39,6 +41,17 @@ func WithServiceNewSessionCallBackFunc(f NewSessionCallBackFunc) ServerOption {
 	}
 }
 
+func newDefaultServerOptions() []ServerOption {
+	return []ServerOption{
+		withServerAddress("127.0.0.1:8000"),
+		withServerNetwork("tcp"),
+	}
+}
+
+func mergeCustomServerOptions(customServerOptions ...ServerOption) []ServerOption {
+	return append(newDefaultServerOptions(), customServerOptions...)
+}
+
 // ClientOption option for client
 type ClientOption func(options *ClientOptions)
 
@@ -68,4 +81,15 @@ func WithClientNewSessionCallBackFunc(f NewSessionCallBackFunc) ClientOption {
 	return func(opt *ClientOptions) {
 		opt.newSession = f
 	}
+}
+
+func newDefaultClientOptions() []ClientOption {
+	return []ClientOption{
+		withClientAddress("127.0.0.1:8000"),
+		withClientNetwork("tcp"),
+	}
+}
+
+func mergeCustomClientOptions(customClientOptions ...ClientOption) []ClientOption {
+	return append(newDefaultClientOptions(), customClientOptions...)
 }

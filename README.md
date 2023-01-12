@@ -376,6 +376,37 @@ func (c codec) Decode(bytes []byte) (interface{}, int, error) {
 }
 ```
 
+### Using Custom Logger
+
+definition
+
+```go
+// Logger  A Logger is a minimalistic interface for the knetty to log messages to. Should
+// be used to provide custom logging writers for the knetty to use.
+type Logger interface {
+	Errorf(format string, args ...interface{})
+	Fatalf(format string, args ...interface{})
+	Fatal(args ...interface{})
+	Infof(format string, args ...interface{})
+	Info(args ...interface{})
+	Warnf(format string, args ...interface{})
+	Debugf(format string, args ...interface{})
+	Debug(args ...interface{})
+}
+
+// SetLogger set custom log
+func SetLogger(logger log.Logger) {
+	log.DefaultLogger = logger
+}
+```
+
+set custom logger
+
+```go
+// logger must impl Logger Interface
+knetty.SetLogger(logger)
+```
+
 ### Using EventListener
 
 definition

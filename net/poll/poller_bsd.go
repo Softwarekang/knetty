@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"syscall"
 	"unsafe"
+
+	"github.com/Softwarekang/knetty/pkg/log"
 )
 
 // Kqueue poller for
@@ -81,7 +83,7 @@ func (k Kqueue) Wait() error {
 			if event.Flags&syscall.EV_EOF != 0 {
 				if netFD.OnInterrupt != nil {
 					if err := netFD.OnInterrupt(); err != nil {
-						fmt.Printf("netFD onInterrupt err:%v", err)
+						log.Errorf("netFD onInterrupt err:%v", err)
 					}
 				}
 				continue
@@ -91,7 +93,7 @@ func (k Kqueue) Wait() error {
 			if event.Filter == syscall.EVFILT_READ && event.Flags&syscall.EV_ENABLE != 0 {
 				if netFD.OnRead != nil {
 					if err := netFD.OnRead(); err != nil {
-						fmt.Printf("netFD OnRead err:%v", err)
+						log.Errorf("netFD OnRead err:%v", err)
 					}
 				}
 				continue
@@ -101,7 +103,7 @@ func (k Kqueue) Wait() error {
 			if event.Filter == syscall.EVFILT_WRITE && event.Flags&syscall.EV_ENABLE != 0 {
 				if netFD.OnWrite != nil {
 					if err := netFD.OnWrite(); err != nil {
-						fmt.Printf("netFD OnWrite err:%v", err)
+						log.Errorf("netFD OnWrite err:%v", err)
 					}
 				}
 				continue

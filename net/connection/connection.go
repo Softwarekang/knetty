@@ -24,7 +24,7 @@ const (
 )
 
 // CloseCallBackFunc will runs at conn on Interrupt
-type CloseCallBackFunc func() error
+type CloseCallBackFunc func()
 
 // Connection some connection  operations
 type Connection interface {
