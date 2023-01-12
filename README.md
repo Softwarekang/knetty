@@ -376,6 +376,7 @@ func (c codec) Decode(bytes []byte) (interface{}, int, error) {
 }
 ```
 ### Using Custom Logger
+
 definition
 ```go
 // Logger  A Logger is a minimalistic interface for the knetty to log messages to. Should
@@ -396,6 +397,7 @@ func SetLogger(logger log.Logger) {
 	log.DefaultLogger = logger
 }
 ```
+
 set custom logger
 
 ```go
