@@ -17,3 +17,7 @@ test:
 .PHONY: lint
 lint:
 	@$(MAKE) go.lint
+
+.PHONY: changelog
+changelog:
+	@$(MAKE) go.changelog
