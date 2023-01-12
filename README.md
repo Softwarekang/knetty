@@ -375,9 +375,11 @@ func (c codec) Decode(bytes []byte) (interface{}, int, error) {
 	return data, len(data), nil
 }
 ```
+
 ### Using Custom Logger
 
 definition
+
 ```go
 // Logger  A Logger is a minimalistic interface for the knetty to log messages to. Should
 // be used to provide custom logging writers for the knetty to use.
