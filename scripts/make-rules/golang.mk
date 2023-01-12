@@ -20,6 +20,7 @@ go.test:
 	@echo "===========> Run go test"
 	@go test -coverprofile=knetty_coverage.out ./...
 
+.PHONY: go.changelog
 go.changelog:
 	@echo "===========>changelog creating"
 	@github_changelog_generator -u softwarekang  -p knetty
