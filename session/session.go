@@ -27,10 +27,6 @@ import (
 	"go.uber.org/atomic"
 )
 
-const (
-	onceReadBufferSize = 1024
-)
-
 // CloseCallBackFunc exec when session stopping
 type CloseCallBackFunc func(Session)
 

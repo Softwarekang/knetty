@@ -17,15 +17,6 @@
 // Package connection  implements tcp, udp and other protocols for network connection
 package connection
 
-import (
-	"time"
-)
-
-const (
-	// default timeout for net io
-	netIOTimeout = time.Second // 1s
-)
-
 type ConnType int
 
 // define tcp、upd、webSocket conn

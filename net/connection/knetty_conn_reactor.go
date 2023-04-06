@@ -59,8 +59,6 @@ func (c *knettyConn) OnInterrupt() error {
 		return err
 	}
 
-	if hupFn := c.eventTrigger.OnConnHup; hupFn != nil {
-		hupFn()
-	}
+	c.eventTrigger.OnConnHup()
 	return nil
 }
