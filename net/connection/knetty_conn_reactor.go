@@ -28,10 +28,9 @@ func (c *knettyConn) OnRead() error {
 		return err
 	}
 
-	waitBufferSize := c.waitBufferSize.Load()
-	if waitBufferSize > 0 && int64(c.inputBuffer.Len()) > waitBufferSize {
-		c.waitBufferChan <- struct{}{}
-	}
+	buf := c.inputBuffer.Bytes()
+	usedBufLen := c.eventTrigger.OnConnBufferReadable(buf)
+	c.inputBuffer.Release(usedBufLen)
 	return nil
 }
 
@@ -54,15 +53,14 @@ func (c *knettyConn) OnWrite() error {
 // OnInterrupt refactor for conn
 func (c *knettyConn) OnInterrupt() error {
 	c.close.Store(1)
-	c.closeWaitBufferCh()
 	if err := c.poller.Register(&poll.NetFileDesc{
 		FD: c.fd,
 	}, poll.DeleteRead); err != nil {
 		return err
 	}
 
-	if err := c.closeCallBackFn; err != nil {
-		c.closeCallBackFn()
+	if hupFn := c.eventTrigger.OnConnHup; hupFn != nil {
+		hupFn()
 	}
 	return nil
 }

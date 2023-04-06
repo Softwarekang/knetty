@@ -46,28 +46,22 @@ type Connection interface {
 	LocalAddr() string
 	// RemoteAddr remote address for conn
 	RemoteAddr() string
-	// ReadTimeout timeout for read
-	ReadTimeout() time.Duration
-	// SetReadTimeout setup read timeout
-	SetReadTimeout(time.Duration)
-	// WriteTimeout timeout for write
-	WriteTimeout() time.Duration
-	// SetWriteTimeout setup write timeout
-	SetWriteTimeout(time.Duration)
-	// Next will return length n bytes
-	Next(n int) ([]byte, error)
-	// Read will return max len(p) data
-	Read(p []byte) (int, error)
 	// WriteBuffer will write bytes to conn buffer
 	WriteBuffer(bytes []byte) (int, error)
 	// FlushBuffer will send conn buffer data to net
 	FlushBuffer() error
-	// SetCloseCallBack set close callback fun when conn on interrupt
-	SetCloseCallBack(fn CloseCallBackFunc)
+	// SetEventTrigger set eventTrigger for conn
+	SetEventTrigger(trigger EventTrigger)
 	// Len will return conn readable data size
 	Len() int
 	// Type  will return conn type
 	Type() ConnType
 	// Close will interrupt conn
 	Close() error
+}
+
+// EventTrigger trigger
+type EventTrigger interface {
+	OnConnBufferReadable([]byte) int
+	OnConnHup()
 }

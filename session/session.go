@@ -20,10 +20,9 @@ package session
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/Softwarekang/knetty/net/connection"
-	"github.com/Softwarekang/knetty/pkg/buffer"
+	merr "github.com/Softwarekang/knetty/pkg/err"
 
 	"go.uber.org/atomic"
 )
@@ -41,10 +40,6 @@ type Session interface {
 	LocalAddr() string
 	// RemoteAddr return remote address (for example, "192.0.2.1:25", "[2001:db8::1]:80")
 	RemoteAddr() string
-	// SetReadTimeout setting read timeout
-	SetReadTimeout(time.Duration)
-	// SetWriteTimeout setting write timeout
-	SetWriteTimeout(time.Duration)
 	// SetCodec setting yourself codec is necessary, otherwise a panic will occur at runtime
 	SetCodec(Codec)
 	// SetEventListener setting yourself eventListener is necessary, otherwise a panic will occur at runtime
@@ -57,15 +52,7 @@ type Session interface {
 	WriteBuffer(bytes []byte) (int, error)
 	// FlushBuffer will send conn buffer data to net
 	FlushBuffer() error
-	/*
-		Run will run this session, so it is blocking.
-		You can use to avoid blocking the main program
-		go func(){
-			if err:=session.Run();err!=nil{
-				// handle err
-			}
-		}
-	*/
+	//	Run will run this session
 	Run() error
 	// SetCloseCallBackFunc setting closeBackFunc for session
 	SetCloseCallBackFunc(fn CloseCallBackFunc)
@@ -88,7 +75,7 @@ func NewSession(conn connection.Connection) Session {
 	s := &session{
 		conn: conn,
 	}
-	s.conn.SetCloseCallBack(s.onClose)
+
 	return s
 }
 
@@ -100,16 +87,6 @@ func (s *session) LocalAddr() string {
 // RemoteAddr .
 func (s *session) RemoteAddr() string {
 	return s.conn.RemoteAddr()
-}
-
-// SetReadTimeout .
-func (s *session) SetReadTimeout(duration time.Duration) {
-	s.conn.SetReadTimeout(duration)
-}
-
-// SetWriteTimeout .
-func (s *session) SetWriteTimeout(duration time.Duration) {
-	s.conn.SetWriteTimeout(duration)
 }
 
 // SetCodec .
@@ -158,9 +135,15 @@ func (s *session) Run() error {
 		return errors.New("session eventListener is nil")
 	}
 
+	if s.conn == nil {
+		return errors.New("session connection is nil")
+	}
+
 	// notify listen onConnection func
 	s.eventListener.OnConnect(s)
-	return s.handlePkg()
+	// set conn eventTrigger
+	s.conn.SetEventTrigger(NewSessionEventTrigger(s))
+	return nil
 }
 
 func (s *session) isActive() bool {
@@ -186,65 +169,50 @@ func (s *session) Close() error {
 	return s.conn.Close()
 }
 
-func (s *session) handlePkg() error {
+func (s *session) handlePkg(buf []byte) (usedBufLen int) {
 	var err error
 	defer func() {
-		if s.closeCallBackFn != nil {
-			s.closeCallBackFn(s)
-		}
-
 		if err != nil {
 			s.eventListener.OnError(s, err)
+			if s.isActive() {
+				_ = s.Close()
+			}
 		}
 	}()
-	if s.conn == nil {
-		err = errors.New("session connection is nil")
-		return err
-	}
 
 	switch s.conn.Type() {
 	case connection.TCPCONNECTION:
-		if err = s.handleTcpPkg(); err != nil {
-			return nil
+		if usedBufLen, err = s.handleTcpPkg(buf); err != nil {
+			return
 		}
 	default:
 		err = errors.New("session unSupport connection type")
-		return err
+		_ = s.Close()
+		return
 	}
 
-	return nil
+	return
 }
 
-func (s *session) handleTcpPkg() error {
-	buf := buffer.NewByteBuffer()
+func (s *session) handleTcpPkg(buf []byte) (int, error) {
+	var processedBufLen int
 	for {
 		if !s.isActive() {
-			return nil
+			return processedBufLen, merr.ConnClosedErr
 		}
 
-		p := make([]byte, onceReadBufferSize)
-		pkgLen, err := s.conn.Read(p)
+		pkg, pkgLen, err := s.pkgCodec.Decode(buf)
 		if err != nil {
-			return err
+			return processedBufLen, err
 		}
 
-		if err := buf.Write(p[:pkgLen]); err != nil {
-			return err
+		if pkg == nil {
+			return processedBufLen, nil
 		}
 
-		for buf.Len() > 0 {
-			pkg, pkgLen, err := s.pkgCodec.Decode(buf.Bytes())
-			if err != nil {
-				return err
-			}
-
-			if pkg == nil {
-				break
-			}
-
-			s.eventListener.OnMessage(s, pkg)
-			buf.Release(pkgLen)
-		}
+		s.eventListener.OnMessage(s, pkg)
+		processedBufLen += pkgLen
+		buf = buf[pkgLen:]
 	}
 }
 
@@ -255,4 +223,22 @@ func (s *session) onClose() {
 
 	s.close.Store(1)
 	s.eventListener.OnClose(s)
+	if s.closeCallBackFn != nil {
+		s.closeCallBackFn(s)
+	}
+}
+
+type WrappedEventTrigger struct {
+	session *session
+}
+
+func NewSessionEventTrigger(session *session) *WrappedEventTrigger {
+	return &WrappedEventTrigger{session: session}
+}
+func (s WrappedEventTrigger) OnConnBufferReadable(buf []byte) int {
+	return s.session.handlePkg(buf)
+}
+
+func (s WrappedEventTrigger) OnConnHup() {
+	s.session.onClose()
 }

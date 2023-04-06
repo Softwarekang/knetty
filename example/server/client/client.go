@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"log"
 	"syscall"
-	"time"
 
 	"github.com/Softwarekang/knetty"
 	"github.com/Softwarekang/knetty/session"
@@ -41,8 +40,6 @@ func main() {
 
 // set the necessary parameters for the session to run.
 func newSessionCallBackFn(s session.Session) error {
-	s.SetReadTimeout(1 * time.Second)
-	s.SetWriteTimeout(1 * time.Second)
 	s.SetCodec(codec{})
 	s.SetEventListener(&pkgListener{})
 	return nil

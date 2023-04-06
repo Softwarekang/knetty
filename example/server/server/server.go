@@ -73,8 +73,6 @@ func main() {
 func newSessionCallBackFn(s session.Session) error {
 	s.SetCodec(&codec{})
 	s.SetEventListener(&helloWorldListener{})
-	s.SetReadTimeout(1 * time.Second)
-	s.SetWriteTimeout(1 * time.Second)
 	return nil
 }
 
@@ -84,6 +82,9 @@ type helloWorldListener struct {
 func (e *helloWorldListener) OnMessage(s session.Session, pkg interface{}) {
 	data := pkg.(string)
 	fmt.Printf("server got data:%s\n", data)
+	time.Sleep(2 * time.Second)
+	s.WritePkg(data)
+	s.FlushBuffer()
 }
 
 func (e *helloWorldListener) OnConnect(s session.Session) {

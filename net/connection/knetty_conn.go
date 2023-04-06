@@ -10,18 +10,14 @@ import (
 type knettyConn struct {
 	id                 uint32
 	fd                 int
-	readTimeOut        *atomic.Duration
-	writeTimeOut       *atomic.Duration
 	localAddress       string
 	remoteAddress      string
 	poller             poll.Poll
 	inputBuffer        *buffer.RingBuffer
 	outputBuffer       *buffer.RingBuffer
-	closeCallBackFn    CloseCallBackFunc
-	waitBufferSize     atomic.Int64
 	netFd              *poll.NetFileDesc
+	eventTrigger       EventTrigger
 	writeNetBufferChan chan struct{}
-	waitBufferChan     chan struct{}
 	close              atomic.Int32
 }
 
@@ -45,13 +41,5 @@ func (c *knettyConn) initNetFd() {
 			OnRead:      c.OnRead,
 			OnInterrupt: c.OnInterrupt,
 		},
-	}
-}
-
-func (c *knettyConn) closeWaitBufferCh() {
-	select {
-	case <-c.waitBufferChan:
-	default:
-		close(c.waitBufferChan)
 	}
 }

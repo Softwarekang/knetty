@@ -134,16 +134,14 @@ func (s *Server) onRead() error {
 		return err
 	}
 
-	newSession.SetCloseCallBackFunc(s.onSessionClose)
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.sessions[newSession] = struct{}{}
-	s.mu.Unlock()
-	go func() {
-		if err := newSession.Run(); err != nil {
-			log.Errorf("server session init err:%v", err)
-		}
-	}()
-
+	newSession.SetCloseCallBackFunc(s.onSessionClose)
+	if err := newSession.Run(); err != nil {
+		log.Errorf("server session run err:%v", err)
+		return err
+	}
 	return nil
 }
 
@@ -152,6 +150,9 @@ func (s *Server) waitQuit() {
 }
 
 func (s *Server) onSessionClose(session session.Session) {
+	if !s.isActive() {
+		return
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.sessions, session)
@@ -189,6 +190,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 				}
 			}
 			s.mu.Unlock()
+			s.sessions = nil
 			return s.poller.Close()
 		}
 	}
