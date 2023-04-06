@@ -97,8 +97,6 @@ func initLogger() {
 func newSessionCallBackFn(s session.Session) error {
 	s.SetCodec(newHttpEchoCodec())
 	s.SetEventListener(&httpEventListener{})
-	s.SetReadTimeout(1 * time.Second)
-	s.SetWriteTimeout(1 * time.Second)
 	return nil
 }
 
