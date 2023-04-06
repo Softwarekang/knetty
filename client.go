@@ -77,12 +77,10 @@ func (c *Client) tcpEventloop() error {
 	}
 
 	c.session = newSession
-	go func() {
-		if err := newSession.Run(); err != nil {
-			log.Errorf("session init err:%s", err.Error())
-		}
-	}()
-
+	if err := newSession.Run(); err != nil {
+		log.Errorf("session run err:%s", err.Error())
+		return err
+	}
 	c.waitQuit()
 	return nil
 }

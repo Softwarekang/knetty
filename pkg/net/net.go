@@ -29,19 +29,34 @@ func ResolveConnFileDesc(conn net.Conn) (int, error) {
 		return 0, errors.New("conn is nil")
 	}
 
+	var fdCopy uintptr
 	switch c := conn.(type) {
+	// When a TCP/UDP connection returns a file, it is a copy of the underlying OS file, and closing this file with
+	// syscall.close(file.FD()) has no effect on closing the connection.
+	// Thus, it is necessary to use the SyscallConn method to obtain the actual connection and invoke
+	// Control(f func(fd uintptr)) error to obtain the actual FD for effective connection management.
 	case *net.TCPConn:
-		file, err := c.File()
+		rawConn, err := c.SyscallConn()
 		if err != nil {
+			return 0, nil
+		}
+		if err := rawConn.Control(func(fd uintptr) {
+			fdCopy = fd
+		}); err != nil {
 			return 0, err
 		}
-		return int(file.Fd()), nil
+		return int(fdCopy), nil
 	case *net.UDPConn:
-		file, err := c.File()
+		rawConn, err := c.SyscallConn()
 		if err != nil {
+			return 0, nil
+		}
+		if err := rawConn.Control(func(fd uintptr) {
+			fdCopy = fd
+		}); err != nil {
 			return 0, err
 		}
-		return int(file.Fd()), nil
+		return int(fdCopy), nil
 	default:
 		return 0, errors.New("resolveConnFileDesc only support tcp、udp")
 	}

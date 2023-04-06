@@ -127,8 +127,11 @@ func (t *TcpConn) Close() error {
 	if !t.isActive() {
 		return nil
 	}
-
-	return t.OnInterrupt()
+	t.close.Store(1)
+	if et := t.eventTrigger; et != nil {
+		et.OnConnHup()
+	}
+	return syscall.Close(t.fd)
 }
 
 // Type .
