@@ -1,5 +1,5 @@
 /*
-	Copyright 2022 ankangan
+	Copyright 2022 Phoenix
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -45,12 +45,12 @@ type RingBuffer struct {
 	cap int
 }
 
-// NewRingBuffer .
+// NewRingBuffer returns a  default 64 kb size circular buffer.
 func NewRingBuffer() *RingBuffer {
 	return NewRingBufferWithCap(defaultCacheSize)
 }
 
-// NewRingBufferWithCap .
+// NewRingBufferWithCap returns a cap byte size circular buffer.
 func NewRingBufferWithCap(cap int) *RingBuffer {
 	if cap <= 0 {
 		cap = defaultCacheSize
@@ -68,7 +68,10 @@ func NewRingBufferWithCap(cap int) *RingBuffer {
 	}
 }
 
-// CopyFromFd .
+// CopyFromFd read data from fd to ringBuffer, if ringBuffer is full, return retry error (EAGAIN).
+// todo:(Phoenix) ringBuffer does not have an automatic expansion mechanism,
+// which will cause many invalid status callbacks in poll.
+// It is necessary to add an expansion strategy and provide memory multiplexing capabilities.
 func (r *RingBuffer) CopyFromFd(fd int) (int, error) {
 	rr := r.r
 	if r.full(rr) {
@@ -99,7 +102,8 @@ func (r *RingBuffer) CopyFromFd(fd int) (int, error) {
 	return n, nil
 }
 
-// WriteToFd .
+// WriteToFd write the ring Buffer data to the network, if the buffer is empty, an EAGAIN error will be returned.
+// One will return other more types to error
 func (r *RingBuffer) WriteToFd(fd int) (int, error) {
 	rw := r.w
 	if rw == r.r {
@@ -128,7 +132,7 @@ func (r *RingBuffer) WriteToFd(fd int) (int, error) {
 	return n, nil
 }
 
-// Write .
+// Write max len(p) of data to ringBuffer, returning a retryable EAGAIN error if the buffer is full.
 func (r *RingBuffer) Write(p []byte) (int, error) {
 	rr := r.r
 	if r.full(rr) {
@@ -157,7 +161,7 @@ func (r *RingBuffer) Write(p []byte) (int, error) {
 	return n, nil
 }
 
-// Read .
+// Read max len(p) of data to p, returning a retryable EAGAIN error if the buffer is empty.
 func (r *RingBuffer) Read(p []byte) (int, error) {
 	rw := r.w
 	if rw == r.r {
@@ -186,7 +190,7 @@ func (r *RingBuffer) Read(p []byte) (int, error) {
 	return n, nil
 }
 
-// Bytes .
+// Bytes return all data in ringBuffer.
 func (r *RingBuffer) Bytes() []byte {
 	var zeroBytes []byte
 	rw := r.w
@@ -209,22 +213,22 @@ func (r *RingBuffer) Bytes() []byte {
 	return p
 }
 
-// Len .
+// Len returns the number of readable bytes of the ring Buffer.
 func (r *RingBuffer) Len() int {
 	return r.readableSize(r.w)
 }
 
-// WriteString .
+// WriteString write string into ringBuffer.
 func (r *RingBuffer) WriteString(s string) (int, error) {
 	return r.Write([]byte(s))
 }
 
-// IsEmpty .
+// IsEmpty return true if ringBuffer is empty.
 func (r *RingBuffer) IsEmpty() bool {
 	return r.r == r.w
 }
 
-// Release .
+// Release  maximum n bytes of data in ringBuffer.
 func (r *RingBuffer) Release(n int) {
 	rw := r.w
 	releasableSize := rw - r.r
@@ -240,12 +244,12 @@ func (r *RingBuffer) Release(n int) {
 	r.r += n
 }
 
-// Cap .
+// Cap return the ringBuffer capacity.
 func (r *RingBuffer) Cap() int {
 	return r.cap
 }
 
-// Clear .
+// Clear up the ringBuffer.
 func (r *RingBuffer) Clear() {
 	r.r, r.w, r.cap, r.p = 0, 0, 0, nil
 }

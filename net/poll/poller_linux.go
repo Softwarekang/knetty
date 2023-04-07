@@ -1,7 +1,7 @@
 //go:build linux && !race
 
 /*
-	Copyright 2022 ankangan
+	Copyright 2022 Phoenix
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -27,12 +27,12 @@ import (
 	msyscall "github.com/Softwarekang/knetty/pkg/syscall"
 )
 
-// Epoll poller for unix
+// Epoll poller for epoll.
 type Epoll struct {
 	fd int
 }
 
-// NewDefaultPoller .
+// NewDefaultPoller return a  kqueue poller.
 func NewDefaultPoller() Poll {
 	fd, err := syscall.EpollCreate1(0)
 	if err != nil {
@@ -43,7 +43,7 @@ func NewDefaultPoller() Poll {
 	}
 }
 
-// Register .
+// Register implements Poll.
 func (e *Epoll) Register(netFd *NetFileDesc, eventType EventType) error {
 	var op int
 	var events uint32
@@ -69,7 +69,7 @@ func (e *Epoll) Register(netFd *NetFileDesc, eventType EventType) error {
 	})
 }
 
-// Wait .
+// Wait implements Poll.
 func (e *Epoll) Wait() error {
 	events := make([]msyscall.EpollEvent, 1024)
 	for {
@@ -116,7 +116,7 @@ func (e *Epoll) Wait() error {
 	}
 }
 
-// Close .
+// Close implements Poll.
 func (e *Epoll) Close() error {
 	return syscall.Close(e.fd)
 }

@@ -1,5 +1,5 @@
 /*
-	Copyright 2022 ankangan
+	Copyright 2022 Phoenix
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -27,16 +27,17 @@ import (
 	msyscall "github.com/Softwarekang/knetty/pkg/syscall"
 )
 
-// TcpConn tcp conn in knetty, impl Connection
+// TcpConn tcp connection implements the Connection interface.
 type TcpConn struct {
 	knettyConn
+
 	conn net.Conn
 }
 
-// NewTcpConn .
+// NewTcpConn create a new tcp connection, conn implements net.Conn in the standard library.
 func NewTcpConn(conn net.Conn) (*TcpConn, error) {
 	if conn == nil {
-		return nil, errors.New("conn is nil")
+		return nil, errors.New("NewTcpConn(conn net.Conn): conn is nil")
 	}
 
 	var localAddress, remoteAddress string
@@ -48,6 +49,7 @@ func NewTcpConn(conn net.Conn) (*TcpConn, error) {
 		remoteAddress = conn.RemoteAddr().String()
 	}
 
+	// get real fd from conn
 	fd, err := mnet.ResolveConnFileDesc(conn)
 	if err != nil {
 		return nil, err
@@ -57,6 +59,7 @@ func NewTcpConn(conn net.Conn) (*TcpConn, error) {
 	_ = msyscall.SetConnectionNoBlock(fd)
 	return &TcpConn{
 		knettyConn: knettyConn{
+			id:                 idBuilder.Inc(),
 			fd:                 fd,
 			localAddress:       localAddress,
 			remoteAddress:      remoteAddress,
@@ -69,27 +72,27 @@ func NewTcpConn(conn net.Conn) (*TcpConn, error) {
 	}, nil
 }
 
-// ID .
-func (t *TcpConn) ID() uint32 {
+// ID implements Connection.
+func (t *TcpConn) ID() uint64 {
 	return t.id
 }
 
-// LocalAddr .
+// LocalAddr implements Connection.
 func (t *TcpConn) LocalAddr() string {
 	return t.localAddress
 }
 
-// RemoteAddr .
+// RemoteAddr implements Connection.
 func (t *TcpConn) RemoteAddr() string {
 	return t.remoteAddress
 }
 
-// WriteBuffer .
+// WriteBuffer implements Connection.
 func (t *TcpConn) WriteBuffer(bytes []byte) (int, error) {
 	return t.outputBuffer.Write(bytes)
 }
 
-// FlushBuffer .
+// FlushBuffer implements Connection.
 func (t *TcpConn) FlushBuffer() error {
 	if _, err := t.outputBuffer.WriteToFd(t.fd); err != nil && err != syscall.EAGAIN {
 		return err
@@ -99,16 +102,18 @@ func (t *TcpConn) FlushBuffer() error {
 		return nil
 	}
 
-	// net buffer is full
+	// When the network data cannot be written, register the write event to poll,
+	// and write the buffer data to the network when it is writable again.
 	if err := t.Register(poll.ReadToRW); err != nil {
 		return err
 	}
 
+	// block the goroutine.
 	<-t.writeNetBufferChan
 	return nil
 }
 
-// Len .
+// Len implements Connection.
 func (t *TcpConn) Len() int {
 	return t.inputBuffer.Len()
 }
@@ -117,12 +122,12 @@ func (t *TcpConn) isActive() bool {
 	return t.close.Load() == 0
 }
 
-// SetEventTrigger .
+// SetEventTrigger implements Connection.
 func (t *TcpConn) SetEventTrigger(trigger EventTrigger) {
 	t.eventTrigger = trigger
 }
 
-// Close .
+// Close implements Connection.
 func (t *TcpConn) Close() error {
 	if !t.isActive() {
 		return nil
@@ -134,7 +139,7 @@ func (t *TcpConn) Close() error {
 	return syscall.Close(t.fd)
 }
 
-// Type .
+// Type implements Connection.
 func (t *TcpConn) Type() ConnType {
 	return TCPCONNECTION
 }

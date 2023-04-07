@@ -1,5 +1,5 @@
 /*
-	Copyright 2022 ankangan
+	Copyright 2022 Phoenix
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -38,40 +38,48 @@ var (
 
 type netTimeoutErr struct{}
 
+// Error implements error.
 func (n netTimeoutErr) Error() string {
 	return "net io timeout"
 }
 
+// TimeoutError implements knettyErr.
 func (n netTimeoutErr) TimeoutError() bool {
 	return true
 }
 
 type connClosedErr struct{}
 
+// Error implements error.
 func (c *connClosedErr) Error() string {
 	return "net conn is closed"
 }
 
+// TimeoutError implements knettyErr.
 func (c *connClosedErr) TimeoutError() bool {
 	return false
 }
 
 type clientClosedErr struct{}
 
+// Error implements error.
 func (c *clientClosedErr) Error() string {
 	return "client has already been closed"
 }
 
+// TimeoutError implements knettyErr.
 func (c *clientClosedErr) TimeoutError() bool {
 	return false
 }
 
 type serverClosedErr struct{}
 
+// Error implements error.
 func (s *serverClosedErr) Error() string {
 	return "server has already been closed"
 }
 
+// TimeoutError implements knettyErr.
 func (s *serverClosedErr) TimeoutError() bool {
 	return false
 }

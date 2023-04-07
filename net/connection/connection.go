@@ -1,5 +1,5 @@
 /*
-	Copyright 2022 ankangan
+	Copyright 2022 Phoenix
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -14,45 +14,52 @@
 	limitations under the License.
 */
 
-// Package connection  implements tcp, udp and other protocols for network connection
+// Package connection  implements tcp, udp and other protocols for network connection.
 package connection
+
+import "go.uber.org/atomic"
 
 type ConnType int
 
-// define tcp、upd、webSocket conn
-const (
-	TCPCONNECTION ConnType = iota
-	UDPCONNECTION
-	WEBSOCKETCONNECTION
+var (
+	idBuilder atomic.Uint64
 )
 
-// CloseCallBackFunc will runs at conn on Interrupt
-type CloseCallBackFunc func()
+// define tcp、upd、webSocket connType
+const (
+	// TCPCONNECTION tcp conn
+	TCPCONNECTION ConnType = iota
+)
 
-// Connection some connection  operations
-type Connection interface {
-	// ID for conn
-	ID() uint32
-	// LocalAddr local address for conn
-	LocalAddr() string
-	// RemoteAddr remote address for conn
-	RemoteAddr() string
-	// WriteBuffer will write bytes to conn buffer
-	WriteBuffer(bytes []byte) (int, error)
-	// FlushBuffer will send conn buffer data to net
-	FlushBuffer() error
-	// SetEventTrigger set eventTrigger for conn
-	SetEventTrigger(trigger EventTrigger)
-	// Len will return conn readable data size
-	Len() int
-	// Type  will return conn type
-	Type() ConnType
-	// Close will interrupt conn
-	Close() error
+// EventTrigger define connection event notification behavior.
+type EventTrigger interface {
+	// OnConnReadable triggered when the connection gets data from the network.
+	OnConnReadable([]byte) int
+	// OnConnHup triggered when the connection gets an error / close event from the network.
+	OnConnHup()
 }
 
-// EventTrigger trigger
-type EventTrigger interface {
-	OnConnBufferReadable([]byte) int
-	OnConnHup()
+// Connection is a network connection oriented towards byte streams, based on an event-driven mechanism.
+type Connection interface {
+	// ID return a uin-type value that uniquely identifies each stream connection。
+	ID() uint64
+	// LocalAddr return the actual local connection address.
+	LocalAddr() string
+	// RemoteAddr return the actual remote connection address.
+	RemoteAddr() string
+	// WriteBuffer does not immediately write the byte stream to the network,
+	// but rather writes it to a local output buffer.
+	WriteBuffer(bytes []byte) (int, error)
+	// FlushBuffer writes all data in the local output buffer to the network.
+	// It is a blocking operation and waits until all the data has been written to the network.
+	FlushBuffer() error
+	// SetEventTrigger set the EventTrigger, when the network connection is readable or the connection is abnormal,
+	// the trigger will be driven
+	SetEventTrigger(trigger EventTrigger)
+	// Len returns the maximum readable bytes of the current connection.
+	Len() int
+	// Type Return the current connection network type tcp/udp/ws.
+	Type() ConnType
+	// Close the network connection, regardless of the ongoing blocking non-blocking read and write will return an error.
+	Close() error
 }

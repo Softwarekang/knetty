@@ -1,5 +1,5 @@
 /*
-	Copyright 2022 ankangan
+	Copyright 2022 Phoenix
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@ type session struct {
 	close           atomic.Int32
 }
 
-// NewSession .
+// NewSession create new session.
 func NewSession(conn connection.Connection) Session {
 	s := &session{
 		conn: conn,
@@ -75,17 +75,17 @@ func NewSession(conn connection.Connection) Session {
 	return s
 }
 
-// LocalAddr .
+// LocalAddr  implements Session.
 func (s *session) LocalAddr() string {
 	return s.conn.LocalAddr()
 }
 
-// RemoteAddr .
+// RemoteAddr implements Session.
 func (s *session) RemoteAddr() string {
 	return s.conn.RemoteAddr()
 }
 
-// SetCodec .
+// SetCodec implements Session.
 func (s *session) SetCodec(codec Codec) {
 	if codec == nil {
 		panic("codec is nil")
@@ -93,7 +93,7 @@ func (s *session) SetCodec(codec Codec) {
 	s.pkgCodec = codec
 }
 
-// SetEventListener .
+// SetEventListener implements Session.
 func (s *session) SetEventListener(eventListener EventListener) {
 	if eventListener == nil {
 		panic("eventListener is nil")
@@ -101,7 +101,7 @@ func (s *session) SetEventListener(eventListener EventListener) {
 	s.eventListener = eventListener
 }
 
-// WritePkg .
+// WritePkg implements Session.
 func (s *session) WritePkg(pkg interface{}) (int, error) {
 	data, err := s.pkgCodec.Encode(pkg)
 	if err != nil {
@@ -111,17 +111,17 @@ func (s *session) WritePkg(pkg interface{}) (int, error) {
 	return s.conn.WriteBuffer(data)
 }
 
-// WriteBuffer .
+// WriteBuffer implements Session.
 func (s *session) WriteBuffer(data []byte) (int, error) {
 	return s.conn.WriteBuffer(data)
 }
 
-// FlushBuffer .
+// FlushBuffer implements Session.
 func (s *session) FlushBuffer() error {
 	return s.conn.FlushBuffer()
 }
 
-// Run .
+// Run implements Session.
 func (s *session) Run() error {
 	if s.pkgCodec == nil {
 		return errors.New("session pkgCodec is nil")
@@ -154,12 +154,12 @@ func (s *session) SetCloseCallBackFunc(fn CloseCallBackFunc) {
 	s.closeCallBackFn = fn
 }
 
-// Info .
+// Info implements Session.
 func (s *session) Info() string {
 	return fmt.Sprintf("[localAddr:%s remoteAddr:%s]", s.LocalAddr(), s.RemoteAddr())
 }
 
-// Close .
+// Close implements Session.
 func (s *session) Close() error {
 	s.onClose()
 	return s.conn.Close()
@@ -231,7 +231,7 @@ type WrappedEventTrigger struct {
 func NewSessionEventTrigger(session *session) *WrappedEventTrigger {
 	return &WrappedEventTrigger{session: session}
 }
-func (s WrappedEventTrigger) OnConnBufferReadable(buf []byte) int {
+func (s WrappedEventTrigger) OnConnReadable(buf []byte) int {
 	return s.session.handlePkg(buf)
 }
 

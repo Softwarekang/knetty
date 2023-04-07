@@ -1,5 +1,5 @@
 /*
-	Copyright 2022 ankangan
+	Copyright 2022 Phoenix
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ type pollerManager struct {
 	pollers  []Poll // all the pollers
 }
 
-// SetPollerNums setup num for pollers
+// SetPollerNums setup num for pollers.
 func (m *pollerManager) SetPollerNums(n int) error {
 	if n < 1 {
 		return fmt.Errorf("SetPollerNums(n int):@n < 0")

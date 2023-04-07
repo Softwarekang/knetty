@@ -1,5 +1,5 @@
 /*
-	Copyright 2022 ankangan
+	Copyright 2022 Phoenix
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
 	limitations under the License.
 */
 
-// Package poll impl io multiplexing on different systems
+// Package poll impl io multiplexing on different systems.
 package poll
 
-// Poll net poll interface
+// Poll define net poll interface.
 type Poll interface {
 	// Register netFd in the poller. events is the type of event that the poller focus on
 	Register(netFd *NetFileDesc, eventType EventType) error

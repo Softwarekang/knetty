@@ -1,5 +1,5 @@
 /*
-	Copyright 2022 ankangan
+	Copyright 2022 Phoenix
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -22,43 +22,50 @@ import (
 	"github.com/Softwarekang/knetty/net/poll"
 )
 
-// OnRead refactor for conn
-func (c *knettyConn) OnRead() error {
-	if _, err := c.inputBuffer.CopyFromFd(c.fd); err != nil {
-		return err
+// OnRead executed when the network connection FD is readable.
+// the network data first enters the connection buffer as much as possible,
+// and then drives the EventTrigger OnConnReadable function of the upper layer to process the data in the buffer.
+func (c *knettyConn) OnRead() (err error) {
+	if _, err = c.inputBuffer.CopyFromFd(c.fd); err != nil {
+		return
 	}
 
+	// return a copied buf for session
 	buf := c.inputBuffer.Bytes()
-	usedBufLen := c.eventTrigger.OnConnBufferReadable(buf)
+	usedBufLen := c.eventTrigger.OnConnReadable(buf)
 	c.inputBuffer.Release(usedBufLen)
-	return nil
+	return
 }
 
-// OnWrite refactor for conn
-func (c *knettyConn) OnWrite() error {
-	if _, err := c.outputBuffer.WriteToFd(c.fd); err != nil && err != syscall.EAGAIN {
+// OnWrite executed when the network connection FD is writeable.
+// in some cases, there may be an `abnormality (EAGAIN)` in which data is written to the network.
+// When the network FD becomes writable, data should be written to the network as much as possible.
+func (c *knettyConn) OnWrite() (err error) {
+	if _, err = c.outputBuffer.WriteToFd(c.fd); err != nil && err != syscall.EAGAIN {
 		return err
 	}
 
 	if c.outputBuffer.IsEmpty() {
+		// unregister the connection FD readable event to avoid too many invalid readable event triggers by poll.
 		if err := c.Register(poll.RwToRead); err != nil {
 			return err
 		}
 
+		// notify blocking goroutines.
 		c.writeNetBufferChan <- struct{}{}
 	}
-	return nil
+	return
 }
 
-// OnInterrupt refactor for conn
+// OnInterrupt executed when the network connection FD is close/hup.
+// when the network connection needs to be closed or the exception needs to close the entire connection.
 func (c *knettyConn) OnInterrupt() error {
+	// set connection status
 	c.close.Store(1)
-	if err := c.poller.Register(&poll.NetFileDesc{
-		FD: c.fd,
-	}, poll.DeleteRead); err != nil {
-		return err
-	}
-
+	// trigger OnConnHup fn
 	c.eventTrigger.OnConnHup()
-	return nil
+	// clean up the connection FD in poll to avoid resource leaks
+	return c.poller.Register(&poll.NetFileDesc{
+		FD: c.fd,
+	}, poll.DeleteRead)
 }

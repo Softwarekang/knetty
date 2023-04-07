@@ -1,7 +1,7 @@
 //go:build (darwin || netbsd || freebsd || openbsd || dragonfly) && !race
 
 /*
-	Copyright 2022 ankangan
+	Copyright 2022 Phoenix
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -26,12 +26,12 @@ import (
 	"github.com/Softwarekang/knetty/pkg/log"
 )
 
-// Kqueue poller for
+// Kqueue poller for kqueue.
 type Kqueue struct {
 	fd int
 }
 
-// NewDefaultPoller .
+// NewDefaultPoller return a  kqueue poller.
 func NewDefaultPoller() Poll {
 	fd, err := syscall.Kqueue()
 	if err != nil {
@@ -49,7 +49,7 @@ func NewDefaultPoller() Poll {
 	return &Kqueue{fd: fd}
 }
 
-// Register .
+// Register implements Poll.
 func (k Kqueue) Register(netFd *NetFileDesc, eventType EventType) error {
 	var filter int16
 	var flags uint16
@@ -79,7 +79,7 @@ func (k Kqueue) Register(netFd *NetFileDesc, eventType EventType) error {
 	return nil
 }
 
-// Wait .
+// Wait  implements Poll.
 func (k Kqueue) Wait() error {
 	events := make([]syscall.Kevent_t, 1024)
 	for {
@@ -128,7 +128,7 @@ func (k Kqueue) Wait() error {
 	}
 }
 
-// Close .
+// Close  implements Poll.
 func (k Kqueue) Close() error {
 	return syscall.Close(k.fd)
 }
