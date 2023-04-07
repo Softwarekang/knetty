@@ -17,6 +17,7 @@
 package buffer
 
 import (
+	"github.com/Softwarekang/knetty/pkg/utils"
 	"syscall"
 
 	"github.com/Softwarekang/knetty/pkg/math"
@@ -56,8 +57,8 @@ func NewRingBufferWithCap(cap int) *RingBuffer {
 		cap = defaultCacheSize
 	}
 
-	if (cap & (cap - 1)) != 0 {
-		cap = math.Min(adjust(cap), maxCacheSize)
+	if !utils.IsPowerOfTwo(cap) {
+		cap = math.Min(utils.AdjustNToPowerOfTwo(cap), maxCacheSize)
 	}
 
 	return &RingBuffer{
@@ -273,13 +274,4 @@ func (r *RingBuffer) readableSize(rw int) int {
 
 func (r *RingBuffer) index(i int) int {
 	return i & (r.cap - 1)
-}
-
-func adjust(n int) int {
-	n |= n >> 1
-	n |= n >> 2
-	n |= n >> 4
-	n |= n >> 8
-	n |= n >> 16
-	return n + 1
 }
