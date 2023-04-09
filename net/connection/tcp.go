@@ -23,8 +23,8 @@ import (
 
 	"github.com/Softwarekang/knetty/net/poll"
 	"github.com/Softwarekang/knetty/pkg/buffer"
-	mnet "github.com/Softwarekang/knetty/pkg/net"
-	msyscall "github.com/Softwarekang/knetty/pkg/syscall"
+	netutil "github.com/Softwarekang/knetty/pkg/net"
+	syscallutil "github.com/Softwarekang/knetty/pkg/syscall"
 )
 
 // TcpConn tcp connection implements the Connection interface.
@@ -50,13 +50,13 @@ func NewTcpConn(conn net.Conn) (*TcpConn, error) {
 	}
 
 	// get real fd from conn
-	fd, err := mnet.ResolveConnFileDesc(conn)
+	fd, err := netutil.ResolveConnFileDesc(conn)
 	if err != nil {
 		return nil, err
 	}
 
 	// set conn no block
-	_ = msyscall.SetConnectionNoBlock(fd)
+	_ = syscallutil.SetConnectionNoBlock(fd)
 	return &TcpConn{
 		knettyConn: knettyConn{
 			id:                 idBuilder.Inc(),

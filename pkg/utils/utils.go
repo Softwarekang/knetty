@@ -32,9 +32,5 @@ func AdjustNToPowerOfTwo(n int) int {
 
 // IsPowerOfTwo check whether n is 2 to the nth power.
 func IsPowerOfTwo(n int) bool {
-	if (n & (n - 1)) != 0 {
-		return false
-	}
-
-	return true
+	return n&(n-1) == 0
 }

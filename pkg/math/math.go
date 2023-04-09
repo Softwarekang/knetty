@@ -17,6 +17,7 @@
 // Package math common mathematical methods
 package math
 
+// Max return the larger of the two numbers, a and b.
 func Max(a, b int) int {
 	if a < b {
 		return b
@@ -25,6 +26,7 @@ func Max(a, b int) int {
 	return a
 }
 
+// Min return the smaller of the two numbers, a and b.
 func Min(a, b int) int {
 	if a < b {
 		return a

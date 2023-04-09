@@ -41,7 +41,8 @@ func init() {
 		size := 1 << i
 		ringBufferPool[size] = &sync.Pool{
 			New: func() any {
-				return make([]byte, size)
+				buf := make([]byte, size)
+				return &buf
 			},
 		}
 	}
@@ -59,8 +60,8 @@ func Get(size int) []byte {
 	}
 
 	size = utils.AdjustNToPowerOfTwo(size)
-	buf := ringBufferPool[size].Get().([]byte)
-	return buf[:size]
+	bufPointer := ringBufferPool[size].Get().(*[]byte)
+	return (*bufPointer)[:size]
 }
 
 // Put if buf is legal then it will be put into the buffer pool.
@@ -73,5 +74,6 @@ func Put(buf []byte) {
 	if c > maxAllocSize || c < minAllocSize {
 		return
 	}
-	ringBufferPool[c].Put(buf[:0])
+	releasedBuf := buf[:0]
+	ringBufferPool[c].Put(&releasedBuf)
 }

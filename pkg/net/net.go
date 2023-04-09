@@ -23,7 +23,7 @@ import (
 	"syscall"
 )
 
-// ResolveConnFileDesc resolve tcp、udp fd
+// ResolveConnFileDesc  get the real file descriptor of net.conn.
 func ResolveConnFileDesc(conn net.Conn) (int, error) {
 	if conn == nil {
 		return 0, errors.New("conn is nil")

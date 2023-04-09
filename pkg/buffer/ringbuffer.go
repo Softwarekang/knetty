@@ -17,8 +17,9 @@
 package buffer
 
 import (
-	"github.com/Softwarekang/knetty/pkg/utils"
 	"syscall"
+
+	"github.com/Softwarekang/knetty/pkg/utils"
 
 	"github.com/Softwarekang/knetty/pkg/math"
 	msycall "github.com/Softwarekang/knetty/pkg/syscall"

@@ -51,6 +51,8 @@ func TestPut(t *testing.T) {
 	bytes1 := Get(1)
 	bytes1[1] = '1'
 	Put(bytes1)
+	// get released buf
 	oldBytes := Get(1)
+	// check index 1 value
 	assert.Equal(t, uint8('1'), oldBytes[1])
 }

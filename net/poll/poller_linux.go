@@ -24,7 +24,7 @@ import (
 	"unsafe"
 
 	"github.com/Softwarekang/knetty/pkg/log"
-	msyscall "github.com/Softwarekang/knetty/pkg/syscall"
+	syscallutil "github.com/Softwarekang/knetty/pkg/syscall"
 )
 
 // Epoll poller for epoll.
@@ -58,12 +58,12 @@ func (e *Epoll) Register(netFd *NetFileDesc, eventType EventType) error {
 		op, events = syscall.EPOLL_CTL_DEL, syscall.EPOLLIN
 	case OnceWrite:
 		// once write use et trigger
-		op, events = syscall.EPOLL_CTL_ADD, uint32(msyscall.EpollET|syscall.EPOLLOUT)
+		op, events = syscall.EPOLL_CTL_ADD, uint32(syscallutil.EpollET|syscall.EPOLLOUT)
 	default:
 		return fmt.Errorf("epoll not support the event type:%d", int(eventType))
 	}
 
-	return msyscall.EpollCtl(e.fd, op, netFd.FD, &msyscall.EpollEvent{
+	return syscallutil.EpollCtl(e.fd, op, netFd.FD, &syscallutil.EpollEvent{
 		Events: events | syscall.EPOLLHUP | syscall.EPOLLRDHUP | syscall.EPOLLERR,
 		Udata:  *(*[8]byte)(unsafe.Pointer(&netFd)),
 	})
@@ -71,9 +71,9 @@ func (e *Epoll) Register(netFd *NetFileDesc, eventType EventType) error {
 
 // Wait implements Poll.
 func (e *Epoll) Wait() error {
-	events := make([]msyscall.EpollEvent, 1024)
+	events := make([]syscallutil.EpollEvent, 1024)
 	for {
-		n, err := msyscall.EpollWait(e.fd, events, -1)
+		n, err := syscallutil.EpollWait(e.fd, events, -1)
 		if err != nil {
 			if err == syscall.EINTR {
 				continue
