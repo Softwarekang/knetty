@@ -19,27 +19,27 @@ package buffer
 import (
 	"syscall"
 
-	"github.com/Softwarekang/knetty/pkg/utils"
-
 	"github.com/Softwarekang/knetty/pkg/math"
-	msycall "github.com/Softwarekang/knetty/pkg/syscall"
+	pool "github.com/Softwarekang/knetty/pkg/pool/ringbuffer"
+	syscallutil "github.com/Softwarekang/knetty/pkg/syscall"
+	"github.com/Softwarekang/knetty/pkg/utils"
 )
 
 const (
-	// defaultCacheSize default cache size 64 kb
-	defaultCacheSize = 64 * K
-	// maxCacheSize max cache size 1 GB
-	maxCacheSize = 1 * G
+	// defaultCacheSize default cache size 64 kb.
+	defaultCacheSize = 64 * KiByte
+	// maxCacheSize max cache size 512 mb.
+	maxCacheSize = 512 * MiByte
 )
 
 const (
-	B = 1
-	K = 1024 * B
-	M = 1024 * K
-	G = 1024 * M
+	Byte = 1 << (iota * 10)
+	KiByte
+	MiByte
+	GiByte
 )
 
-// RingBuffer lock-free cache for a read-write goroutine.
+// RingBuffer an efficient, automatically resizable, and memory-reusable circular buffer implementation.
 type RingBuffer struct {
 	p   []byte
 	r   int
@@ -63,7 +63,7 @@ func NewRingBufferWithCap(cap int) *RingBuffer {
 	}
 
 	return &RingBuffer{
-		p:   make([]byte, cap),
+		p:   pool.Get(cap),
 		r:   0,
 		w:   0,
 		cap: cap,
@@ -75,12 +75,16 @@ func NewRingBufferWithCap(cap int) *RingBuffer {
 // which will cause many invalid status callbacks in poll.
 // It is necessary to add an expansion strategy and provide memory multiplexing capabilities.
 func (r *RingBuffer) CopyFromFd(fd int) (int, error) {
-	rr := r.r
-	if r.full(rr) {
-		return 0, syscall.EAGAIN
+	// if ringBuffer is full, increase the double capacity  each time.
+	if r.full() {
+		// if the ringBuffer is already at its maximum allocatable capacity(512mb),
+		// it will return the retryable error EAGAIN.
+		if !r.grow(r.cap * 2) {
+			return 0, syscall.EAGAIN
+		}
 	}
 
-	writeIndex, readIndex := r.index(r.w), r.index(rr)
+	writeIndex, readIndex := r.index(r.w), r.index(r.r)
 	if writeIndex < readIndex {
 		n, err := syscall.Read(fd, r.p[writeIndex:readIndex])
 		if err != nil {
@@ -95,7 +99,7 @@ func (r *RingBuffer) CopyFromFd(fd int) (int, error) {
 		r.p[writeIndex:],
 		r.p[:readIndex],
 	}
-	n, err := msycall.Readv(fd, bs)
+	n, err := syscallutil.Readv(fd, bs)
 	if err != nil {
 		return 0, err
 	}
@@ -107,12 +111,11 @@ func (r *RingBuffer) CopyFromFd(fd int) (int, error) {
 // WriteToFd write the ring Buffer data to the network, if the buffer is empty, an EAGAIN error will be returned.
 // One will return other more types to error
 func (r *RingBuffer) WriteToFd(fd int) (int, error) {
-	rw := r.w
-	if rw == r.r {
+	if r.IsEmpty() {
 		return 0, syscall.EAGAIN
 	}
 
-	writeIndex, readIndex := r.index(rw), r.index(r.r)
+	writeIndex, readIndex := r.index(r.w), r.index(r.r)
 	if readIndex < writeIndex {
 		n, err := syscall.Write(fd, r.p[readIndex:writeIndex])
 		if err != nil {
@@ -126,7 +129,7 @@ func (r *RingBuffer) WriteToFd(fd int) (int, error) {
 		r.p[readIndex:],
 		r.p[:writeIndex],
 	}
-	n, err := msycall.Writev(fd, bs)
+	n, err := syscallutil.Writev(fd, bs)
 	if err != nil {
 		return 0, err
 	}
@@ -136,24 +139,28 @@ func (r *RingBuffer) WriteToFd(fd int) (int, error) {
 
 // Write max len(p) of data to ringBuffer, returning a retryable EAGAIN error if the buffer is full.
 func (r *RingBuffer) Write(p []byte) (int, error) {
-	rr := r.r
-	if r.full(rr) {
-		return 0, syscall.EAGAIN
-	}
-
 	l := len(p)
 	if l <= 0 {
 		return 0, nil
 	}
 
-	writeIndex, readIndex := r.index(r.w), r.index(rr)
+	writeableSize := r.writeableSize()
+	// if the writableSize of the ringBuffer is less than len(p), it needs to be resized.
+	// if the ringBuffer has reached the maximum allocatable capacity, a retryable EAGAIN error will be returned.
+	if l > writeableSize {
+		if !r.grow(r.cap+l) && r.full() {
+			return 0, syscall.EAGAIN
+		}
+	}
+
+	writeIndex, readIndex := r.index(r.w), r.index(r.r)
 	if writeIndex < readIndex {
 		n := copy(r.p[writeIndex:readIndex], p)
 		r.w += n
 		return n, nil
 	}
 
-	writeableSize := math.Min(r.cap+readIndex-writeIndex, l)
+	writeableSize = math.Min(writeableSize, l)
 	n := copy(r.p[writeIndex:], p)
 	if n < writeableSize {
 		n += copy(r.p[:readIndex], p[n:])
@@ -165,24 +172,23 @@ func (r *RingBuffer) Write(p []byte) (int, error) {
 
 // Read max len(p) of data to p, returning a retryable EAGAIN error if the buffer is empty.
 func (r *RingBuffer) Read(p []byte) (int, error) {
-	rw := r.w
-	if rw == r.r {
-		return 0, syscall.EAGAIN
-	}
-
 	l := len(p)
 	if l <= 0 {
 		return 0, nil
 	}
 
-	writeIndex, readIndex := r.index(rw), r.index(r.r)
+	if r.IsEmpty() {
+		return 0, syscall.EAGAIN
+	}
+
+	writeIndex, readIndex := r.index(r.w), r.index(r.r)
 	if readIndex < writeIndex {
 		n := copy(p, r.p[readIndex:writeIndex])
 		r.r += n
 		return n, nil
 	}
 
-	readableSize := math.Min(r.readableSize(rw), l)
+	readableSize := math.Min(r.readableSize(), l)
 	n := copy(p, r.p[readIndex:])
 	if n < readableSize {
 		n += copy(p[n:], r.p[:writeIndex])
@@ -199,7 +205,7 @@ func (r *RingBuffer) Bytes() []byte {
 	if rw == r.r {
 		return zeroBytes
 	}
-	readableSize := r.readableSize(rw)
+	readableSize := r.readableSize()
 	p := make([]byte, readableSize)
 	writeIndex, readIndex := r.index(rw), r.index(r.r)
 	if readIndex < writeIndex {
@@ -217,7 +223,7 @@ func (r *RingBuffer) Bytes() []byte {
 
 // Len returns the number of readable bytes of the ring Buffer.
 func (r *RingBuffer) Len() int {
-	return r.readableSize(r.w)
+	return r.readableSize()
 }
 
 // WriteString write string into ringBuffer.
@@ -227,19 +233,17 @@ func (r *RingBuffer) WriteString(s string) (int, error) {
 
 // IsEmpty return true if ringBuffer is empty.
 func (r *RingBuffer) IsEmpty() bool {
-	return r.r == r.w
+	return r.readableSize() == 0
 }
 
 // Release  maximum n bytes of data in ringBuffer.
 func (r *RingBuffer) Release(n int) {
-	rw := r.w
-	releasableSize := rw - r.r
-	if releasableSize == 0 {
+	if n <= 0 {
 		return
 	}
 
-	if n > releasableSize {
-		r.r = rw
+	if n > r.readableSize() {
+		r.r = r.w
 		return
 	}
 
@@ -256,21 +260,38 @@ func (r *RingBuffer) Clear() {
 	r.r, r.w, r.cap, r.p = 0, 0, 0, nil
 }
 
-func (r *RingBuffer) full(rr int) bool {
-	return r.w-rr == r.cap
+func (r *RingBuffer) grow(needCap int) bool {
+	if needCap > maxCacheSize {
+		return false
+	}
+
+	newCap := utils.AdjustNToPowerOfTwo(needCap)
+	buf := pool.Get(newCap)
+	n, _ := r.Read(buf)
+	pool.Put(r.p)
+	r.r, r.w, r.p, r.cap = 0, n, buf, newCap
+	return true
 }
 
-func (r *RingBuffer) readableSize(rw int) int {
-	if rw == r.r {
+func (r *RingBuffer) full() bool {
+	return r.writeableSize() == 0
+}
+
+func (r *RingBuffer) readableSize() int {
+	if r.w == r.r {
 		return 0
 	}
 
-	writeIndex, readIndex := r.index(rw), r.index(r.r)
+	writeIndex, readIndex := r.index(r.w), r.index(r.r)
 	if writeIndex > readIndex {
 		return writeIndex - readIndex
 	}
 
 	return r.cap + writeIndex - readIndex
+}
+
+func (r *RingBuffer) writeableSize() int {
+	return r.cap - r.readableSize()
 }
 
 func (r *RingBuffer) index(i int) int {

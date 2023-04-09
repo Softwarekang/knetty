@@ -24,8 +24,8 @@ import (
 )
 
 const (
-	// The minimum buffer is 64 kb.
-	minAllocBit  = 6
+	// The minimum buffer is 1 byte.
+	minAllocBit  = 0
 	minAllocSize = 1 << minAllocBit
 	// The maximum buffer size is 512 mb.
 	maxAllocBit  = 29
@@ -49,7 +49,7 @@ func init() {
 }
 
 // Get the ringBuffer pool will return []byte of size is the first value greater than or equal its 2^n.
-// newCap  between 64 kb and 512 mb。
+// newCap  between  1 byte. and 512 mb。
 func Get(size int) []byte {
 	if size < minAllocSize {
 		size = minAllocSize

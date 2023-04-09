@@ -32,9 +32,9 @@ func TestGet(t *testing.T) {
 		args    args
 		wantCap int
 	}{
-		{name: "test case 1", args: args{size: 1}, wantCap: 1 << 6},
-		{name: "test case 2", args: args{size: 1 << minAllocBit}, wantCap: 1 << minAllocBit},
-		{name: "test case 3", args: args{size: 1<<minAllocBit + 1}, wantCap: 1 << 7},
+		{name: "test case 1", args: args{size: 1}, wantCap: 1},
+		{name: "test case 2", args: args{size: 1 << minAllocBit}, wantCap: 1},
+		{name: "test case 3", args: args{size: 1<<minAllocBit + 1}, wantCap: 2},
 		{name: "test case 4", args: args{size: 1<<maxAllocBit + 1}, wantCap: 1 << maxAllocBit},
 		{name: "test case 5", args: args{size: 1 << maxAllocBit}, wantCap: 1 << maxAllocBit},
 	}
@@ -48,11 +48,11 @@ func TestGet(t *testing.T) {
 }
 
 func TestPut(t *testing.T) {
-	bytes1 := Get(1)
+	bytes1 := Get(63)
 	bytes1[1] = '1'
 	Put(bytes1)
 	// get released buf
-	oldBytes := Get(1)
+	oldBytes := Get(63)
 	// check index 1 value
 	assert.Equal(t, uint8('1'), oldBytes[1])
 }

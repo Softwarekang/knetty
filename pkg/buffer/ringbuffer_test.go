@@ -51,11 +51,6 @@ func TestNewRingBuffer(t *testing.T) {
 			wantCap: maxCacheSize,
 		},
 		{
-			name:    "normal",
-			args:    args{cap: 1},
-			wantCap: 1,
-		},
-		{
 			name:    "cap <= 0",
 			args:    args{cap: -1},
 			wantCap: defaultCacheSize,
@@ -97,63 +92,30 @@ func TestRingBuffer_Write(t *testing.T) {
 
 	n, err = ringBuffer.WriteString("helloworld")
 	assert.Nil(t, err)
-	assert.Equal(t, 6, n)
+	assert.Equal(t, 10, n)
+	assert.Equal(t, 32, ringBuffer.Cap())
 
-	assert.Equal(t, "helloworldhellow", string(ringBuffer.Bytes()))
-	assert.Equal(t, 16, ringBuffer.Len())
-
-	n, err = ringBuffer.WriteString("test")
-	assert.Equal(t, err, syscall.EAGAIN)
-	assert.Equal(t, 0, n)
-
-	assert.Equal(t, "helloworldhellow", string(ringBuffer.Bytes()))
-	assert.Equal(t, 16, ringBuffer.Len())
+	assert.Equal(t, "helloworldhelloworld", string(ringBuffer.Bytes()))
+	assert.Equal(t, 20, ringBuffer.Len())
 
 	ringBuffer.Release(5)
 
-	assert.Equal(t, "worldhellow", string(ringBuffer.Bytes()))
-	assert.Equal(t, 11, ringBuffer.Len())
+	assert.Equal(t, "worldhelloworld", string(ringBuffer.Bytes()))
+	assert.Equal(t, 15, ringBuffer.Len())
 
 	n, err = ringBuffer.WriteString("123456")
-	assert.Equal(t, 5, n)
+	assert.Equal(t, 6, n)
 	assert.Nil(t, err)
 
-	assert.Equal(t, "worldhellow12345", string(ringBuffer.Bytes()))
-	assert.Equal(t, 16, ringBuffer.Len())
+	assert.Equal(t, "worldhelloworld123456", string(ringBuffer.Bytes()))
+	assert.Equal(t, 21, ringBuffer.Len())
 
 	ringBuffer.Release(10)
 
-	assert.Equal(t, "w12345", string(ringBuffer.Bytes()))
-	assert.Equal(t, 6, ringBuffer.Len())
-
-	n, err = ringBuffer.WriteString("789")
-	assert.Equal(t, 3, n)
-	assert.Nil(t, err)
-
-	assert.Equal(t, "w12345789", string(ringBuffer.Bytes()))
-	assert.Equal(t, 9, ringBuffer.Len())
-
-	ringBuffer.Release(5)
-
-	assert.Equal(t, "5789", string(ringBuffer.Bytes()))
-	assert.Equal(t, 4, ringBuffer.Len())
-
-	n, err = ringBuffer.WriteString("789")
-	assert.Equal(t, 3, n)
-	assert.Nil(t, err)
-
-	assert.Equal(t, "5789789", string(ringBuffer.Bytes()))
-	assert.Equal(t, 7, ringBuffer.Len())
-
-	n, err = ringBuffer.WriteString("helloworld")
-	assert.Equal(t, 9, n)
-	assert.Nil(t, err)
-
-	assert.Equal(t, "5789789helloworl", string(ringBuffer.Bytes()))
-	assert.Equal(t, 16, ringBuffer.Len())
+	assert.Equal(t, "world123456", string(ringBuffer.Bytes()))
+	assert.Equal(t, 11, ringBuffer.Len())
 
 	ringBuffer.Release(ringBuffer.Len() + 1)
-	ringBuffer.Release(1)
 	var emptyValue []byte
 	assert.Equal(t, emptyValue, ringBuffer.Bytes())
 	assert.Equal(t, 0, ringBuffer.Len())
@@ -187,52 +149,45 @@ func TestRingBuffer_Read(t *testing.T) {
 
 	n, err = ringBuffer.WriteString("helloworld")
 	assert.Nil(t, err)
-	assert.Equal(t, 6, n)
+	assert.Equal(t, 10, n)
 
-	assert.Equal(t, "helloworldhellow", string(ringBuffer.Bytes()))
-	assert.Equal(t, 16, ringBuffer.Len())
-
-	n, err = ringBuffer.WriteString("test")
-	assert.Equal(t, err, syscall.EAGAIN)
-	assert.Equal(t, 0, n)
-
-	assert.Equal(t, "helloworldhellow", string(ringBuffer.Bytes()))
-	assert.Equal(t, 16, ringBuffer.Len())
+	assert.Equal(t, "helloworldhelloworld", string(ringBuffer.Bytes()))
+	assert.Equal(t, 20, ringBuffer.Len())
 
 	rBuf = make([]byte, 5)
 	n, err = ringBuffer.Read(rBuf)
 	assert.Nil(t, err)
 	assert.Equal(t, 5, n)
 
-	assert.Equal(t, "worldhellow", string(ringBuffer.Bytes()))
-	assert.Equal(t, 11, ringBuffer.Len())
+	assert.Equal(t, "worldhelloworld", string(ringBuffer.Bytes()))
+	assert.Equal(t, 15, ringBuffer.Len())
 
 	n, err = ringBuffer.WriteString("123456")
-	assert.Equal(t, 5, n)
+	assert.Equal(t, 6, n)
 	assert.Nil(t, err)
 
-	assert.Equal(t, "worldhellow12345", string(ringBuffer.Bytes()))
-	assert.Equal(t, 16, ringBuffer.Len())
+	assert.Equal(t, "worldhelloworld123456", string(ringBuffer.Bytes()))
+	assert.Equal(t, 21, ringBuffer.Len())
 
 	rBuf = make([]byte, 10)
 	n, err = ringBuffer.Read(rBuf)
 	assert.Nil(t, err)
 	assert.Equal(t, 10, n)
 
-	assert.Equal(t, "w12345", string(ringBuffer.Bytes()))
-	assert.Equal(t, 6, ringBuffer.Len())
+	assert.Equal(t, "world123456", string(ringBuffer.Bytes()))
+	assert.Equal(t, 11, ringBuffer.Len())
 
 	n, err = ringBuffer.WriteString("789")
 	assert.Equal(t, 3, n)
 	assert.Nil(t, err)
 
-	assert.Equal(t, "w12345789", string(ringBuffer.Bytes()))
-	assert.Equal(t, 9, ringBuffer.Len())
+	assert.Equal(t, "world123456789", string(ringBuffer.Bytes()))
+	assert.Equal(t, 14, ringBuffer.Len())
 
 	rBuf = make([]byte, ringBuffer.Len()+1)
 	n, err = ringBuffer.Read(rBuf)
 	assert.Nil(t, err)
-	assert.Equal(t, 9, n)
+	assert.Equal(t, 14, n)
 
 	var emptyValue []byte
 	assert.Equal(t, emptyValue, ringBuffer.Bytes())
@@ -342,9 +297,10 @@ func TestRingBuffer_CopyFromFd(t *testing.T) {
 	assert.Equal(t, "o1234567", string(ringBuffer.Bytes()))
 
 	n, err = ringBuffer.CopyFromFd(fd)
-	assert.Equal(t, 0, n)
-	assert.Equal(t, syscall.EAGAIN, err)
-	assert.Equal(t, "o1234567", string(ringBuffer.Bytes()))
+	assert.Equal(t, 3, n)
+	assert.Nil(t, err)
+	assert.Equal(t, "o1234567891", string(ringBuffer.Bytes()))
+	assert.Equal(t, 16, ringBuffer.Cap())
 }
 
 func TestRingBuffer_WriteToFd(t *testing.T) {
@@ -436,9 +392,10 @@ func TestRingBuffer_WriteToFd(t *testing.T) {
 	assert.Equal(t, "o1234567", string(readRingBuffer.Bytes()))
 
 	n, err = readRingBuffer.CopyFromFd(rfd)
-	assert.Equal(t, 0, n)
-	assert.Equal(t, syscall.EAGAIN, err)
-	assert.Equal(t, "o1234567", string(readRingBuffer.Bytes()))
+	assert.Equal(t, 3, n)
+	assert.Nil(t, err)
+	assert.Equal(t, 16, readRingBuffer.Cap())
+	assert.Equal(t, "o1234567891", string(readRingBuffer.Bytes()))
 
 	n, err = writeRingBuffer.WriteString("23456")
 	assert.Equal(t, 5, n)
@@ -452,43 +409,4 @@ func TestRingBuffer_WriteToFd(t *testing.T) {
 	assert.Equal(t, 0, n)
 	assert.Equal(t, syscall.EAGAIN, err)
 
-}
-
-func TestRingBufferRWRace(t *testing.T) {
-	var (
-		totalW  int
-		totalR  int
-		wantLen int
-		g       sync.WaitGroup
-	)
-
-	ringBuffer := NewRingBufferWithCap(100000)
-	g.Add(2)
-	go func() {
-		for i := 0; i < 100000; i++ {
-			n, _ := ringBuffer.WriteString("helloworld")
-			totalW += n
-		}
-		g.Done()
-	}()
-
-	go func() {
-		for i := 0; i < 100000; i++ {
-			p := make([]byte, 10)
-			n, _ := ringBuffer.Read(p)
-			totalR += n
-		}
-
-		g.Done()
-	}()
-
-	g.Wait()
-	t.Logf("ringbuffer cap:%d write size:%d readSize:%d", ringBuffer.Cap(), totalW, totalR)
-	if totalW < totalR {
-		wantLen = 0
-	} else {
-		wantLen = totalW - totalR
-	}
-
-	assert.Equal(t, wantLen, ringBuffer.Len())
 }
