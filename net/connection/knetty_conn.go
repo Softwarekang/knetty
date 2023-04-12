@@ -25,17 +25,17 @@ import (
 
 // knettyConn defines common information and methods for various network implementations.
 type knettyConn struct {
-	id                 uint64
-	fd                 int
-	localAddress       string
-	remoteAddress      string
-	poller             poll.Poll
-	inputBuffer        *buffer.RingBuffer
-	outputBuffer       *buffer.RingBuffer
-	netFd              *poll.NetFileDesc
-	eventTrigger       EventTrigger
-	writeNetBufferChan chan struct{}
-	close              atomic.Int32
+	id            uint64
+	fd            int
+	localAddress  string
+	remoteAddress string
+	poller        poll.Poll
+	inputBuffer   *buffer.RingBuffer
+	outputBuffer  *buffer.RingBuffer
+	netFd         *poll.NetFileDesc
+	writeable     bool
+	eventTrigger  EventTrigger
+	close         atomic.Int32
 }
 
 // Register the network connection to poll.

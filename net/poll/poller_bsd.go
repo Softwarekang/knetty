@@ -22,8 +22,6 @@ import (
 	"fmt"
 	"syscall"
 	"unsafe"
-
-	"github.com/Softwarekang/knetty/pkg/log"
 )
 
 // Kqueue poller for kqueue.
@@ -61,7 +59,7 @@ func (k Kqueue) Register(netFd *NetFileDesc, eventType EventType) error {
 	case RwToRead:
 		filter, flags = syscall.EVFILT_WRITE, syscall.EV_DELETE|syscall.EV_ONESHOT
 	case DeleteRead:
-		filter, flags = syscall.EVFILT_READ, syscall.EV_DELETE|syscall.EV_ONESHOT
+		return nil
 	case OnceWrite:
 		filter, flags = syscall.EVFILT_WRITE, syscall.EV_ADD|syscall.EV_ENABLE|syscall.EV_ONESHOT
 	default:
@@ -98,9 +96,7 @@ func (k Kqueue) Wait() error {
 			// check interrupt
 			if event.Flags&syscall.EV_EOF != 0 {
 				if netFD.OnInterrupt != nil {
-					if err := netFD.OnInterrupt(); err != nil {
-						log.Errorf("netFD onInterrupt err:%v", err)
-					}
+					_ = netFD.OnInterrupt()
 				}
 				continue
 			}
@@ -108,9 +104,7 @@ func (k Kqueue) Wait() error {
 			// check read
 			if event.Filter == syscall.EVFILT_READ && event.Flags&syscall.EV_ENABLE != 0 {
 				if netFD.OnRead != nil {
-					if err := netFD.OnRead(); err != nil {
-						log.Errorf("netFD OnRead err:%v", err)
-					}
+					_ = netFD.OnRead()
 				}
 				continue
 			}
@@ -118,9 +112,7 @@ func (k Kqueue) Wait() error {
 			// check write
 			if event.Filter == syscall.EVFILT_WRITE && event.Flags&syscall.EV_ENABLE != 0 {
 				if netFD.OnWrite != nil {
-					if err := netFD.OnWrite(); err != nil {
-						log.Errorf("netFD OnWrite err:%v", err)
-					}
+					_ = netFD.OnWrite()
 				}
 				continue
 			}

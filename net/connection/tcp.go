@@ -59,14 +59,14 @@ func NewTcpConn(conn net.Conn) (*TcpConn, error) {
 	_ = syscallutil.SetConnectionNoBlock(fd)
 	return &TcpConn{
 		knettyConn: knettyConn{
-			id:                 idBuilder.Inc(),
-			fd:                 fd,
-			localAddress:       localAddress,
-			remoteAddress:      remoteAddress,
-			poller:             poll.PollerManager.Pick(),
-			inputBuffer:        buffer.NewRingBuffer(),
-			outputBuffer:       buffer.NewRingBuffer(),
-			writeNetBufferChan: make(chan struct{}, 1),
+			id:            idBuilder.Inc(),
+			fd:            fd,
+			localAddress:  localAddress,
+			writeable:     true,
+			remoteAddress: remoteAddress,
+			poller:        poll.PollerManager.Pick(),
+			inputBuffer:   buffer.NewRingBuffer(),
+			outputBuffer:  buffer.NewRingBuffer(),
 		},
 		conn: conn,
 	}, nil
@@ -94,7 +94,7 @@ func (t *TcpConn) WriteBuffer(bytes []byte) (int, error) {
 
 // FlushBuffer implements Connection.
 func (t *TcpConn) FlushBuffer() error {
-	if _, err := t.outputBuffer.WriteToFd(t.fd); err != nil && err != syscall.EAGAIN {
+	if _, err := t.outputBuffer.WriteToFd(t.fd); err != nil {
 		return err
 	}
 
@@ -102,14 +102,13 @@ func (t *TcpConn) FlushBuffer() error {
 		return nil
 	}
 
-	// When the network data cannot be written, register the write event to poll,
-	// and write the buffer data to the network when it is writable again.
-	if err := t.Register(poll.ReadToRW); err != nil {
-		return err
+	if t.writeable {
+		t.writeable = false
+		// When the network data cannot be written, register the write event to poll,
+		// and write the buffer data to the network when it is writable again.
+		return t.Register(poll.ReadToRW)
 	}
 
-	// block the goroutine.
-	<-t.writeNetBufferChan
 	return nil
 }
 

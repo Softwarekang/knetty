@@ -137,7 +137,6 @@ func (s *Server) onRead() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.sessions[newSession] = struct{}{}
-	newSession.SetCloseCallBackFunc(s.onSessionClose)
 	if err := newSession.Run(); err != nil {
 		log.Errorf("server session run err:%v", err)
 		return err

@@ -17,12 +17,12 @@
 package buffer
 
 import (
-	"syscall"
-
+	errors "github.com/Softwarekang/knetty/pkg/err"
 	"github.com/Softwarekang/knetty/pkg/math"
 	pool "github.com/Softwarekang/knetty/pkg/pool/ringbuffer"
 	syscallutil "github.com/Softwarekang/knetty/pkg/syscall"
 	"github.com/Softwarekang/knetty/pkg/utils"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -70,24 +70,22 @@ func NewRingBufferWithCap(cap int) *RingBuffer {
 	}
 }
 
-// CopyFromFd read data from fd to ringBuffer, if ringBuffer is full, return retry error (EAGAIN).
-// todo:(Phoenix) ringBuffer does not have an automatic expansion mechanism,
-// which will cause many invalid status callbacks in poll.
-// It is necessary to add an expansion strategy and provide memory multiplexing capabilities.
+// CopyFromFd read data from fd to ringBuffer.
+// an err is returned when the ringBuffer gets data from the network and encounters a non-retryable error.
 func (r *RingBuffer) CopyFromFd(fd int) (int, error) {
 	// if ringBuffer is full, increase the double capacity  each time.
 	if r.full() {
 		// if the ringBuffer is already at its maximum allocatable capacity(512mb),
-		// it will return the retryable error EAGAIN.
+		// it will return the  errors.InputBufferFullErr.
 		if !r.grow(r.cap * 2) {
-			return 0, syscall.EAGAIN
+			return 0, nil
 		}
 	}
 
 	writeIndex, readIndex := r.index(r.w), r.index(r.r)
 	if writeIndex < readIndex {
-		n, err := syscall.Read(fd, r.p[writeIndex:readIndex])
-		if err != nil {
+		n, err := unix.Read(fd, r.p[writeIndex:readIndex])
+		if err != nil && (err != unix.EAGAIN && err != unix.EWOULDBLOCK) {
 			return 0, err
 		}
 
@@ -100,7 +98,7 @@ func (r *RingBuffer) CopyFromFd(fd int) (int, error) {
 		r.p[:readIndex],
 	}
 	n, err := syscallutil.Readv(fd, bs)
-	if err != nil {
+	if err != nil && (err != unix.EAGAIN && err != unix.EWOULDBLOCK) {
 		return 0, err
 	}
 
@@ -108,17 +106,17 @@ func (r *RingBuffer) CopyFromFd(fd int) (int, error) {
 	return n, nil
 }
 
-// WriteToFd write the ring Buffer data to the network, if the buffer is empty, an EAGAIN error will be returned.
-// One will return other more types to error
+// WriteToFd write the ring Buffer data to the network.
+// an err is returned when the ringBuffer write data to the network and encounters a non-retryable error.
 func (r *RingBuffer) WriteToFd(fd int) (int, error) {
 	if r.IsEmpty() {
-		return 0, syscall.EAGAIN
+		return 0, nil
 	}
 
 	writeIndex, readIndex := r.index(r.w), r.index(r.r)
 	if readIndex < writeIndex {
-		n, err := syscall.Write(fd, r.p[readIndex:writeIndex])
-		if err != nil {
+		n, err := unix.Write(fd, r.p[readIndex:writeIndex])
+		if err != nil && (err != unix.EAGAIN && err != unix.EWOULDBLOCK) {
 			return 0, err
 		}
 		r.r += n
@@ -130,14 +128,14 @@ func (r *RingBuffer) WriteToFd(fd int) (int, error) {
 		r.p[:writeIndex],
 	}
 	n, err := syscallutil.Writev(fd, bs)
-	if err != nil {
+	if err != nil && (err != unix.EAGAIN && err != unix.EWOULDBLOCK) {
 		return 0, err
 	}
 	r.r += n
 	return n, nil
 }
 
-// Write max len(p) of data to ringBuffer, returning a retryable EAGAIN error if the buffer is full.
+// Write max len(p) of data to ringBuffer, returning a BufferFullErr error if the buffer is full.
 func (r *RingBuffer) Write(p []byte) (int, error) {
 	l := len(p)
 	if l <= 0 {
@@ -146,10 +144,10 @@ func (r *RingBuffer) Write(p []byte) (int, error) {
 
 	writeableSize := r.writeableSize()
 	// if the writableSize of the ringBuffer is less than len(p), it needs to be resized.
-	// if the ringBuffer has reached the maximum allocatable capacity, a retryable EAGAIN error will be returned.
+	// if the ringBuffer has reached the maximum allocatable capacity, a BufferFullErr error will be returned.
 	if l > writeableSize {
 		if !r.grow(r.cap+l) && r.full() {
-			return 0, syscall.EAGAIN
+			return 0, errors.BufferFullErr
 		}
 	}
 
@@ -170,7 +168,7 @@ func (r *RingBuffer) Write(p []byte) (int, error) {
 	return n, nil
 }
 
-// Read max len(p) of data to p, returning a retryable EAGAIN error if the buffer is empty.
+// Read max len(p) of data to p, returning a BufferEmptyErr error if the buffer is empty.
 func (r *RingBuffer) Read(p []byte) (int, error) {
 	l := len(p)
 	if l <= 0 {
@@ -178,7 +176,7 @@ func (r *RingBuffer) Read(p []byte) (int, error) {
 	}
 
 	if r.IsEmpty() {
-		return 0, syscall.EAGAIN
+		return 0, errors.BufferEmptyErr
 	}
 
 	writeIndex, readIndex := r.index(r.w), r.index(r.r)
