@@ -28,10 +28,12 @@ import (
 	"time"
 
 	"github.com/Softwarekang/knetty"
+	"github.com/Softwarekang/knetty/net/poll"
 	"github.com/Softwarekang/knetty/session"
 )
 
 func main() {
+	poll.PollerManager.SetPollerNums(8)
 	// setting optional options for the server
 	options := []knetty.ServerOption{
 		knetty.WithServiceNewSessionCallBackFunc(newSessionCallBackFn),
@@ -79,12 +81,12 @@ func newSessionCallBackFn(s session.Session) error {
 type helloWorldListener struct {
 }
 
-func (e *helloWorldListener) OnMessage(s session.Session, pkg interface{}) {
-	data := pkg.(string)
-	fmt.Printf("server got data:%s\n", data)
-	time.Sleep(2 * time.Second)
-	s.WritePkg(data)
-	s.FlushBuffer()
+func (e *helloWorldListener) OnMessage(s session.Session, pkg interface{}) session.ExecStatus {
+	s1 := pkg.(string)
+	_, err := s.WriteBuffer([]byte(s1))
+	if err = s.FlushBuffer(); err != nil {
+	}
+	return session.Normal
 }
 
 func (e *helloWorldListener) OnConnect(s session.Session) {
@@ -103,17 +105,8 @@ type codec struct {
 }
 
 func (c codec) Encode(pkg interface{}) ([]byte, error) {
-	if pkg == nil {
-		return nil, errors.New("pkg is illegal")
-	}
-	data, ok := pkg.(string)
-	if !ok {
-		return nil, errors.New("pkg type must be string")
-	}
 
-	if len(data) != 5 || data != "hello" {
-		return nil, errors.New("pkg string must be \"hello\"")
-	}
+	data, _ := pkg.(string)
 
 	return []byte(data), nil
 }
@@ -123,16 +116,10 @@ func (c codec) Decode(bytes []byte) (interface{}, int, error) {
 		return nil, 0, errors.New("bytes is nil")
 	}
 
-	if len(bytes) < 5 {
-		return nil, 0, nil
-	}
-
 	data := string(bytes)
-	if len(bytes) > 5 {
-		data = data[0:5]
-	}
-	if data != "hello" {
-		return nil, 0, errors.New("data is not 'hello'")
+
+	if len(data) == 0 {
+		return nil, 0, nil
 	}
 	return data, len(data), nil
 }
