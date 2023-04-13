@@ -28,12 +28,10 @@ import (
 	"time"
 
 	"github.com/Softwarekang/knetty"
-	"github.com/Softwarekang/knetty/net/poll"
 	"github.com/Softwarekang/knetty/session"
 )
 
 func main() {
-	poll.PollerManager.SetPollerNums(8)
 	// setting optional options for the server
 	options := []knetty.ServerOption{
 		knetty.WithServiceNewSessionCallBackFunc(newSessionCallBackFn),
@@ -49,7 +47,7 @@ func main() {
 		}
 	}()
 
-	// Wait for interrupt signal to gracefully shutdown the server with
+	// Wait for interrupt signal to gracefully shut down the server with
 	quit := make(chan os.Signal)
 	// kill (no param) default send syscall.SIGTERM
 	// kill -2 is syscall.SIGINT
@@ -82,10 +80,6 @@ type helloWorldListener struct {
 }
 
 func (e *helloWorldListener) OnMessage(s session.Session, pkg interface{}) session.ExecStatus {
-	s1 := pkg.(string)
-	_, err := s.WriteBuffer([]byte(s1))
-	if err = s.FlushBuffer(); err != nil {
-	}
 	return session.Normal
 }
 

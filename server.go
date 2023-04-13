@@ -91,13 +91,17 @@ func (s *Server) listenTcp() error {
 	}
 
 	s.tcpListener, s.address = streamListener, streamListener.Addr().String()
-	file, err := streamListener.(*net.TCPListener).File()
+	file, err := streamListener.(*net.TCPListener).SyscallConn()
 	if err != nil {
 		return err
 	}
 
+	var fd int
+	file.Control(func(d uintptr) {
+		fd = int(d)
+	})
 	if err := s.poller.Register(&poll.NetFileDesc{
-		FD: int(file.Fd()),
+		FD: fd,
 		NetPollListener: poll.NetPollListener{
 			OnRead: s.onRead,
 		},
