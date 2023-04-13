@@ -97,9 +97,11 @@ func (s *Server) listenTcp() error {
 	}
 
 	var fd int
-	file.Control(func(d uintptr) {
+	if err := file.Control(func(d uintptr) {
 		fd = int(d)
-	})
+	}); err != nil {
+		return err
+	}
 	if err := s.poller.Register(&poll.NetFileDesc{
 		FD: fd,
 		NetPollListener: poll.NetPollListener{
