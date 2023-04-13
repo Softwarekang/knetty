@@ -27,6 +27,12 @@ import (
 	"go.uber.org/atomic"
 )
 
+type ExecStatus int
+
+const (
+	Normal ExecStatus = iota
+)
+
 // CloseCallBackFunc exec when session stopping
 type CloseCallBackFunc func(Session)
 
@@ -170,9 +176,6 @@ func (s *session) handlePkg(buf []byte) (usedBufLen int) {
 	defer func() {
 		if err != nil {
 			s.eventListener.OnError(s, err)
-			if s.isActive() {
-				_ = s.Close()
-			}
 		}
 	}()
 
@@ -206,9 +209,12 @@ func (s *session) handleTcpPkg(buf []byte) (int, error) {
 			return processedBufLen, nil
 		}
 
-		s.eventListener.OnMessage(s, pkg)
 		processedBufLen += pkgLen
 		buf = buf[pkgLen:]
+		switch s.eventListener.OnMessage(s, pkg) {
+		case Normal:
+			continue
+		}
 	}
 }
 

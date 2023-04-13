@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log"
 	"syscall"
+	"time"
 
 	"github.com/Softwarekang/knetty"
 	"github.com/Softwarekang/knetty/session"
@@ -90,10 +91,14 @@ func (c codec) Decode(bytes []byte) (interface{}, int, error) {
 type pkgListener struct {
 }
 
-func (e *pkgListener) OnMessage(s session.Session, pkg interface{}) {
+func (e *pkgListener) OnMessage(s session.Session, pkg interface{}) session.ExecStatus {
 	data := pkg.(string)
 	fmt.Printf("client got data:%s\n", data)
-	sendHello(s)
+	_, err := s.WriteBuffer([]byte(data))
+	if err = s.FlushBuffer(); err != nil {
+	}
+	time.Sleep(2 * time.Second)
+	return session.Normal
 }
 
 func (e *pkgListener) OnConnect(s session.Session) {

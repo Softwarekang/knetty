@@ -20,8 +20,9 @@ import (
 	"net"
 	"reflect"
 	"sync"
-	"syscall"
 	"testing"
+
+	errors "github.com/Softwarekang/knetty/pkg/err"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -195,7 +196,7 @@ func TestRingBuffer_Read(t *testing.T) {
 
 	rBuf = make([]byte, 1)
 	n, err = ringBuffer.Read(rBuf)
-	assert.Equal(t, syscall.EAGAIN, err)
+	assert.Equal(t, errors.BufferEmptyErr, err)
 	assert.Equal(t, 0, n)
 
 	assert.Equal(t, 0, ringBuffer.Len())
@@ -407,6 +408,6 @@ func TestRingBuffer_WriteToFd(t *testing.T) {
 
 	n, err = writeRingBuffer.WriteToFd(wfd)
 	assert.Equal(t, 0, n)
-	assert.Equal(t, syscall.EAGAIN, err)
+	assert.Nil(t, err)
 
 }

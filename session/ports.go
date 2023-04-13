@@ -34,7 +34,7 @@ type EventListener interface {
 	// OnConnect runs when the connection initialized
 	OnConnect(s Session)
 	// OnMessage runs when the session gets a pkg
-	OnMessage(s Session, pkg interface{})
+	OnMessage(s Session, pkg interface{}) ExecStatus
 	// OnError runs when the session err
 	OnError(s Session, e error)
 	// OnClose runs before the session closed

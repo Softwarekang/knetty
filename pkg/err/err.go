@@ -20,44 +20,26 @@ package err
 // knettyErr wrapped err for net
 type knettyErr interface {
 	error
-
-	// TimeoutError if an error is caused by a timeout will return true
-	TimeoutError() bool
 }
 
 var (
-	// NetIOTimeoutErr net io err
-	NetIOTimeoutErr = &netTimeoutErr{}
 	// ConnClosedErr conn closed err
 	ConnClosedErr = &connClosedErr{}
 	// ClientClosedErr client closed err
 	ClientClosedErr = &clientClosedErr{}
 	// ServerClosedErr server closed err
 	ServerClosedErr = &serverClosedErr{}
+	// BufferFullErr buffer is full err
+	BufferFullErr = &bufferFullErr{}
+	// BufferEmptyErr is empty err
+	BufferEmptyErr = &bufferEmptyErr{}
 )
-
-type netTimeoutErr struct{}
-
-// Error implements error.
-func (n netTimeoutErr) Error() string {
-	return "net io timeout"
-}
-
-// TimeoutError implements knettyErr.
-func (n netTimeoutErr) TimeoutError() bool {
-	return true
-}
 
 type connClosedErr struct{}
 
 // Error implements error.
 func (c *connClosedErr) Error() string {
-	return "net conn is closed"
-}
-
-// TimeoutError implements knettyErr.
-func (c *connClosedErr) TimeoutError() bool {
-	return false
+	return "net connection is closed"
 }
 
 type clientClosedErr struct{}
@@ -67,11 +49,6 @@ func (c *clientClosedErr) Error() string {
 	return "client has already been closed"
 }
 
-// TimeoutError implements knettyErr.
-func (c *clientClosedErr) TimeoutError() bool {
-	return false
-}
-
 type serverClosedErr struct{}
 
 // Error implements error.
@@ -79,7 +56,17 @@ func (s *serverClosedErr) Error() string {
 	return "server has already been closed"
 }
 
-// TimeoutError implements knettyErr.
-func (s *serverClosedErr) TimeoutError() bool {
-	return false
+type bufferFullErr struct {
+}
+
+// Error implements error.
+func (o *bufferFullErr) Error() string {
+	return "buffer is full"
+}
+
+type bufferEmptyErr struct {
+}
+
+func (o *bufferEmptyErr) Error() string {
+	return "buffer is empty"
 }

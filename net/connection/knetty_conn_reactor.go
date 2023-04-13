@@ -17,9 +17,9 @@
 package connection
 
 import (
-	"syscall"
-
 	"github.com/Softwarekang/knetty/net/poll"
+
+	"golang.org/x/sys/unix"
 )
 
 // OnRead executed when the network connection FD is readable.
@@ -41,18 +41,14 @@ func (c *knettyConn) OnRead() (err error) {
 // in some cases, there may be an `abnormality (EAGAIN)` in which data is written to the network.
 // When the network FD becomes writable, data should be written to the network as much as possible.
 func (c *knettyConn) OnWrite() (err error) {
-	if _, err = c.outputBuffer.WriteToFd(c.fd); err != nil && err != syscall.EAGAIN {
+	if _, err = c.outputBuffer.WriteToFd(c.fd); err != nil {
 		return err
 	}
 
 	if c.outputBuffer.IsEmpty() {
+		c.writeable = true
 		// unregister the connection FD readable event to avoid too many invalid readable event triggers by poll.
-		if err := c.Register(poll.RwToRead); err != nil {
-			return err
-		}
-
-		// notify blocking goroutines.
-		c.writeNetBufferChan <- struct{}{}
+		return c.Register(poll.RwToRead)
 	}
 	return
 }
@@ -65,7 +61,11 @@ func (c *knettyConn) OnInterrupt() error {
 	// trigger OnConnHup fn
 	c.eventTrigger.OnConnHup()
 	// clean up the connection FD in poll to avoid resource leaks
-	return c.poller.Register(&poll.NetFileDesc{
+	if err := c.poller.Register(&poll.NetFileDesc{
 		FD: c.fd,
-	}, poll.DeleteRead)
+	}, poll.DeleteRead); err != nil {
+		return err
+	}
+
+	return unix.Close(c.fd)
 }
