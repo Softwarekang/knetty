@@ -9,16 +9,17 @@ knetty 是一个用 Go 编写的基于事件驱动架构的网络通信框架。
 ## 内容
 
 - [knetty](#knetty)
-  - [简介](#简介)
-  - [内容](#内容)
-  - [安装](#安装)
-  - [Quick Start](#quick-start)
-  - [更多细节](#更多细节)
-    - [Using NewSessionCallBackFunc](#using-newsessioncallbackfunc)
-    - [Using Codec](#using-codec)
-    - [Using EventListener](#using-eventlistener)
-    - [Graceful shutdown](#graceful-shutdown)
-  - [Benchmarks](#benchmarks)
+	- [简介](#简介)
+	- [内容](#内容)
+	- [安装](#安装)
+	- [Quick Start](#quick-start)
+	- [更多细节](#更多细节)
+		- [Using NewSessionCallBackFunc](#using-newsessioncallbackfunc)
+		- [Using Codec](#using-codec)
+		- [Using Custom Logger](#using-custom-logger)
+		- [Using EventListener](#using-eventlistener)
+		- [Graceful shutdown](#graceful-shutdown)
+	- [Benchmarks](#benchmarks)
 
 ## 安装
 
@@ -68,6 +69,7 @@ import (
 )
 
 func main() {
+	knetty.SetPollerNums(8)
 	// setting optional options for the server
 	options := []knetty.ServerOption{
 		knetty.WithServiceNewSessionCallBackFunc(newSessionCallBackFn),
@@ -83,7 +85,7 @@ func main() {
 		}
 	}()
 
-	// Wait for interrupt signal to gracefully shutdown the server with
+	// Wait for interrupt signal to gracefully shut down the server with
 	quit := make(chan os.Signal)
 	// kill (no param) default send syscall.SIGTERM
 	// kill -2 is syscall.SIGINT
@@ -109,17 +111,16 @@ func main() {
 func newSessionCallBackFn(s session.Session) error {
 	s.SetCodec(&codec{})
 	s.SetEventListener(&helloWorldListener{})
-	s.SetReadTimeout(1 * time.Second)
-	s.SetWriteTimeout(1 * time.Second)
 	return nil
 }
 
 type helloWorldListener struct {
 }
 
-func (e *helloWorldListener) OnMessage(s session.Session, pkg interface{}) {
-	data := pkg.(string)
-	fmt.Printf("server got data:%s\n", data)
+func (e *helloWorldListener) OnMessage(s session.Session, pkg interface{}) session.ExecStatus {
+	s.WritePkg(pkg)
+	s.FlushBuffer()
+	return session.Normal
 }
 
 func (e *helloWorldListener) OnConnect(s session.Session) {
@@ -138,17 +139,8 @@ type codec struct {
 }
 
 func (c codec) Encode(pkg interface{}) ([]byte, error) {
-	if pkg == nil {
-		return nil, errors.New("pkg is illegal")
-	}
-	data, ok := pkg.(string)
-	if !ok {
-		return nil, errors.New("pkg type must be string")
-	}
 
-	if len(data) != 5 || data != "hello" {
-		return nil, errors.New("pkg string must be \"hello\"")
-	}
+	data, _ := pkg.(string)
 
 	return []byte(data), nil
 }
@@ -158,19 +150,14 @@ func (c codec) Decode(bytes []byte) (interface{}, int, error) {
 		return nil, 0, errors.New("bytes is nil")
 	}
 
-	if len(bytes) < 5 {
-		return nil, 0, nil
-	}
-
 	data := string(bytes)
-	if len(bytes) > 5 {
-		data = data[0:5]
-	}
-	if data != "hello" {
-		return nil, 0, errors.New("data is not 'hello'")
+
+	if len(data) == 0 {
+		return nil, 0, nil
 	}
 	return data, len(data), nil
 }
+
 ```
 
 ```sh
@@ -184,12 +171,14 @@ cat client.go
 ```
 
 ```go
+
 package main
 
 import (
 	"errors"
 	"fmt"
 	"log"
+	"syscall"
 	"time"
 
 	"github.com/Softwarekang/knetty"
@@ -210,18 +199,18 @@ func main() {
 
 // set the necessary parameters for the session to run.
 func newSessionCallBackFn(s session.Session) error {
-	s.SetReadTimeout(1 * time.Second)
-	s.SetWriteTimeout(1 * time.Second)
 	s.SetCodec(codec{})
 	s.SetEventListener(&pkgListener{})
 	return nil
 }
 
 func sendHello(s session.Session) {
-	if err := s.WritePkg("hello"); err != nil {
+	n, err := s.WritePkg("hello")
+	if err != nil && err != syscall.EAGAIN {
 		log.Println(err)
 	}
 
+	fmt.Printf("client session send %v bytes data to server\n", n)
 	if err := s.FlushBuffer(); err != nil {
 		log.Println(err)
 	}
@@ -260,9 +249,14 @@ func (c codec) Decode(bytes []byte) (interface{}, int, error) {
 type pkgListener struct {
 }
 
-func (e *pkgListener) OnMessage(s session.Session, pkg interface{}) {
+func (e *pkgListener) OnMessage(s session.Session, pkg interface{}) session.ExecStatus {
 	data := pkg.(string)
-	fmt.Println(data)
+	fmt.Printf("client got data:%s\n", data)
+	_, err := s.WriteBuffer([]byte(data))
+	if err = s.FlushBuffer(); err != nil {
+	}
+	time.Sleep(2 * time.Second)
+	return session.Normal
 }
 
 func (e *pkgListener) OnConnect(s session.Session) {
@@ -271,12 +265,14 @@ func (e *pkgListener) OnConnect(s session.Session) {
 }
 
 func (e *pkgListener) OnClose(s session.Session) {
-	fmt.Printf("session close\n")
+	fmt.Printf("client session: %s closed\n", s.Info())
+
 }
 
 func (e *pkgListener) OnError(s session.Session, err error) {
-	fmt.Printf("session got err :%v\n", err)
+	fmt.Printf("client session: %s got err :%v\n", s.Info(), err)
 }
+
 
 ```
 
@@ -299,15 +295,13 @@ definition
 type NewSessionCallBackFunc func(s session.Session) error
 ```
 
-You can set parameters such as codec, event listener, read/write timeouts, and more for the session via the provided API.
+You can set parameters such as codec, event listener and more for the session via the provided API.
 
 ```go
 // set the necessary parameters for the session to run.
 func newSessionCallBackFn(s session.Session) error {
 	s.SetCodec(&codec{})
 	s.SetEventListener(&helloWorldListener{})
-	s.SetReadTimeout(1 * time.Second)
-	s.SetWriteTimeout(1 * time.Second)
 	return nil
 }
 ```

@@ -32,6 +32,7 @@ import (
 )
 
 func main() {
+	knetty.SetPollerNums(8)
 	// setting optional options for the server
 	options := []knetty.ServerOption{
 		knetty.WithServiceNewSessionCallBackFunc(newSessionCallBackFn),
@@ -80,6 +81,8 @@ type helloWorldListener struct {
 }
 
 func (e *helloWorldListener) OnMessage(s session.Session, pkg interface{}) session.ExecStatus {
+	s.WritePkg(pkg)
+	s.FlushBuffer()
 	return session.Normal
 }
 

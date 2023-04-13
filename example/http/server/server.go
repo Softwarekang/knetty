@@ -103,12 +103,13 @@ func newSessionCallBackFn(s session.Session) error {
 type httpEventListener struct {
 }
 
-func (e *httpEventListener) OnMessage(s session.Session, pkg interface{}) {
+func (e *httpEventListener) OnMessage(s session.Session, pkg interface{}) session.ExecStatus {
 	data := pkg.(string)
 	logger.Infof("server got data:%s", data)
 	if err := echoHello(s, data); err != nil {
 		logger.Infof("server echo err:%v", err)
 	}
+	return session.Normal
 }
 
 func echoHello(s session.Session, data string) error {
