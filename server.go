@@ -125,10 +125,6 @@ func (s *Server) onRead() error {
 		return err
 	}
 
-	if err := tcpConn.Register(poll.Read); err != nil {
-		return err
-	}
-
 	newSession := session.NewSession(tcpConn)
 	if err := s.newSession(newSession); err != nil {
 		return err
@@ -137,11 +133,13 @@ func (s *Server) onRead() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.sessions[newSession] = struct{}{}
+	newSession.SetCloseCallBackFunc(s.onSessionClose)
 	if err := newSession.Run(); err != nil {
 		log.Errorf("server session run err:%v", err)
 		return err
 	}
-	return nil
+
+	return tcpConn.Register(poll.Read)
 }
 
 func (s *Server) waitQuit() {

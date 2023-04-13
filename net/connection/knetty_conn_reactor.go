@@ -18,7 +18,7 @@ package connection
 
 import (
 	"github.com/Softwarekang/knetty/net/poll"
-	"github.com/Softwarekang/knetty/pkg/log"
+
 	"golang.org/x/sys/unix"
 )
 
@@ -60,12 +60,12 @@ func (c *knettyConn) OnInterrupt() error {
 	c.close.Store(1)
 	// trigger OnConnHup fn
 	c.eventTrigger.OnConnHup()
-	if err := unix.Close(c.fd); err != nil {
-		log.Errorf("close fd err:%v", err)
+	// clean up the connection FD in poll to avoid resource leaks
+	if err := c.poller.Register(&poll.NetFileDesc{
+		FD: c.fd,
+	}, poll.DeleteRead); err != nil {
 		return err
 	}
-	// clean up the connection FD in poll to avoid resource leaks
-	return c.poller.Register(&poll.NetFileDesc{
-		FD: c.fd,
-	}, poll.DeleteRead)
+
+	return unix.Close(c.fd)
 }

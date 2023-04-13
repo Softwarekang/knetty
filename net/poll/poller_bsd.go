@@ -59,7 +59,7 @@ func (k Kqueue) Register(netFd *NetFileDesc, eventType EventType) error {
 	case RwToRead:
 		filter, flags = syscall.EVFILT_WRITE, syscall.EV_DELETE|syscall.EV_ONESHOT
 	case DeleteRead:
-		return nil
+		filter, flags = syscall.EVFILT_READ, syscall.EV_DELETE|syscall.EV_ONESHOT
 	case OnceWrite:
 		filter, flags = syscall.EVFILT_WRITE, syscall.EV_ADD|syscall.EV_ENABLE|syscall.EV_ONESHOT
 	default:
