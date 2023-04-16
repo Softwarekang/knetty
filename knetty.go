@@ -18,7 +18,7 @@
 package knetty
 
 import (
-	"github.com/Softwarekang/knetty/net/poll"
+	"github.com/Softwarekang/knetty/internal/net/poll"
 	"github.com/Softwarekang/knetty/pkg/log"
 )
 

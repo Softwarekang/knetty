@@ -19,11 +19,11 @@ package knetty
 import (
 	"context"
 	"fmt"
-	"net"
 
-	"github.com/Softwarekang/knetty/net/connection"
-	"github.com/Softwarekang/knetty/net/poll"
-	merr "github.com/Softwarekang/knetty/pkg/err"
+	"github.com/Softwarekang/knetty/internal/net"
+	"github.com/Softwarekang/knetty/internal/net/connection"
+	"github.com/Softwarekang/knetty/internal/net/poll"
+	errors "github.com/Softwarekang/knetty/pkg/err"
 	"github.com/Softwarekang/knetty/pkg/log"
 	"github.com/Softwarekang/knetty/session"
 )
@@ -53,7 +53,7 @@ func NewClient(network, address string, opts ...ClientOption) *Client {
 
 func (c *Client) Run() error {
 	if !c.isActive() {
-		return merr.ClientClosedErr
+		return errors.ClientClosedErr
 	}
 
 	switch c.network {
@@ -91,16 +91,11 @@ func (c *Client) dicTcp() (connection.Connection, error) {
 		return nil, err
 	}
 
-	tcpConn, err := connection.NewTcpConn(netConn)
-	if err != nil {
+	if err := netConn.Register(poll.Read); err != nil {
 		return nil, err
 	}
 
-	if err := tcpConn.Register(poll.Read); err != nil {
-		return nil, err
-	}
-
-	return tcpConn, nil
+	return netConn, nil
 }
 
 func (c *Client) waitQuit() {
@@ -127,7 +122,7 @@ func (c *Client) Shutdown(ctx context.Context) error {
 		case <-ctx.Done():
 			return fmt.Errorf("server shutdown caused by:%s", ctx.Err())
 		case <-c.closeCh:
-			return merr.ClientClosedErr
+			return errors.ClientClosedErr
 		default:
 			c.quit(nil)
 			if c.session != nil {

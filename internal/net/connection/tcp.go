@@ -17,46 +17,29 @@
 package connection
 
 import (
-	"errors"
 	"net"
 	"syscall"
 
-	"github.com/Softwarekang/knetty/net/poll"
+	"github.com/Softwarekang/knetty/internal/net/poll"
 	"github.com/Softwarekang/knetty/pkg/buffer"
-	netutil "github.com/Softwarekang/knetty/pkg/net"
-	syscallutil "github.com/Softwarekang/knetty/pkg/syscall"
 )
 
 // TcpConn tcp connection implements the Connection interface.
 type TcpConn struct {
 	knettyConn
-
-	conn net.Conn
 }
 
-// NewTcpConn create a new tcp connection, conn implements net.Conn in the standard library.
-func NewTcpConn(conn net.Conn) (*TcpConn, error) {
-	if conn == nil {
-		return nil, errors.New("NewTcpConn(conn net.Conn): conn is nil")
-	}
-
+// NewTcpConn create a new tcp connection, conn implements Connection.
+func NewTcpConn(fd int, lsr, rsr net.Addr) *TcpConn {
 	var localAddress, remoteAddress string
-	if conn.LocalAddr() != nil {
-		localAddress = conn.LocalAddr().String()
+	if lsr != nil {
+		localAddress = lsr.String()
 	}
 
-	if conn.RemoteAddr() != nil {
-		remoteAddress = conn.RemoteAddr().String()
+	if rsr != nil {
+		remoteAddress = rsr.String()
 	}
 
-	// get real fd from conn
-	fd, err := netutil.ResolveConnFileDesc(conn)
-	if err != nil {
-		return nil, err
-	}
-
-	// set conn no block
-	_ = syscallutil.SetConnectionNoBlock(fd)
 	return &TcpConn{
 		knettyConn: knettyConn{
 			id:            idBuilder.Inc(),
@@ -68,13 +51,17 @@ func NewTcpConn(conn net.Conn) (*TcpConn, error) {
 			inputBuffer:   buffer.NewRingBuffer(),
 			outputBuffer:  buffer.NewRingBuffer(),
 		},
-		conn: conn,
-	}, nil
+	}
 }
 
 // ID implements Connection.
 func (t *TcpConn) ID() uint64 {
 	return t.id
+}
+
+// FD implements Connection.
+func (t *TcpConn) FD() int {
+	return t.fd
 }
 
 // LocalAddr implements Connection.

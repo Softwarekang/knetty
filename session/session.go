@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Softwarekang/knetty/net/connection"
+	"github.com/Softwarekang/knetty/internal/net/connection"
 	merr "github.com/Softwarekang/knetty/pkg/err"
 
 	"go.uber.org/atomic"

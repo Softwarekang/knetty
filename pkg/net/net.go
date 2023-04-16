@@ -19,8 +19,8 @@ package net
 
 import (
 	"errors"
+	"golang.org/x/sys/unix"
 	"net"
-	"syscall"
 )
 
 // ResolveConnFileDesc  get the real file descriptor of net.conn.
@@ -63,7 +63,7 @@ func ResolveConnFileDesc(conn net.Conn) (int, error) {
 }
 
 // ResolveNetAddrToSocketAddr resolve net addr to socket addr
-func ResolveNetAddrToSocketAddr(netAddr net.Addr) (syscall.Sockaddr, error) {
+func ResolveNetAddrToSocketAddr(netAddr net.Addr) (unix.Sockaddr, error) {
 	if netAddr == nil {
 		return nil, errors.New("netAddr is nil")
 	}
@@ -78,7 +78,7 @@ func ResolveNetAddrToSocketAddr(netAddr net.Addr) (syscall.Sockaddr, error) {
 	}
 }
 
-func convertAddrToSocketAddr(ip net.IP, port int) (syscall.Sockaddr, error) {
+func convertAddrToSocketAddr(ip net.IP, port int) (unix.Sockaddr, error) {
 	parsedIP := net.ParseIP(ip.String())
 	if parsedIP == nil {
 		return nil, errors.New("ip is illegal")
@@ -90,8 +90,8 @@ func convertAddrToSocketAddr(ip net.IP, port int) (syscall.Sockaddr, error) {
 	return ipToSockaddrInet6(ip, port)
 }
 
-// iPToSockAddrInet4 convert ip port to  syscall.SockaddrInet4
-func iPToSockAddrInet4(ip net.IP, port int) (*syscall.SockaddrInet4, error) {
+// iPToSockAddrInet4 convert ip port to  unix.SockaddrInet4
+func iPToSockAddrInet4(ip net.IP, port int) (*unix.SockaddrInet4, error) {
 	if len(ip) == 0 {
 		ip = net.IPv4zero
 	}
@@ -99,13 +99,13 @@ func iPToSockAddrInet4(ip net.IP, port int) (*syscall.SockaddrInet4, error) {
 	if ip4 == nil {
 		return nil, &net.AddrError{Err: "non-IPv4 address", Addr: ip.String()}
 	}
-	sa := &syscall.SockaddrInet4{Port: port}
+	sa := &unix.SockaddrInet4{Port: port}
 	copy(sa.Addr[:], ip4)
 	return sa, nil
 }
 
-// ipToSockaddrInet6 convert ip port to syscall.SockaddrInet6
-func ipToSockaddrInet6(ip net.IP, port int) (*syscall.SockaddrInet6, error) {
+// ipToSockaddrInet6 convert ip port to unix.SockaddrInet6
+func ipToSockaddrInet6(ip net.IP, port int) (*unix.SockaddrInet6, error) {
 	// In general, an IP wildcard address, which is either
 	// "0.0.0.0" or "::", means the entire IP addressing
 	// space. For some historical reason, it is used to
@@ -123,9 +123,38 @@ func ipToSockaddrInet6(ip net.IP, port int) (*syscall.SockaddrInet6, error) {
 	// IPv6 address.
 	ip6 := ip.To16()
 	if ip6 == nil {
-		return &syscall.SockaddrInet6{}, &net.AddrError{Err: "non-IPv6 address", Addr: ip.String()}
+		return &unix.SockaddrInet6{}, &net.AddrError{Err: "non-IPv6 address", Addr: ip.String()}
 	}
-	sa := &syscall.SockaddrInet6{Port: port}
+	sa := &unix.SockaddrInet6{Port: port}
 	copy(sa.Addr[:], ip6)
 	return sa, nil
+}
+
+// SocketAddrToAddr returns a go/net friendly address
+func SocketAddrToAddr(sa unix.Sockaddr) net.Addr {
+	var a net.Addr
+	switch sa := sa.(type) {
+	case *unix.SockaddrInet4:
+		a = &net.TCPAddr{
+			IP:   sa.Addr[0:],
+			Port: sa.Port,
+		}
+	case *unix.SockaddrInet6:
+		var zone string
+		if sa.ZoneId != 0 {
+			if ifi, err := net.InterfaceByIndex(int(sa.ZoneId)); err == nil {
+				zone = ifi.Name
+			}
+		}
+		// if zone == "" && sa.ZoneId != 0 {
+		// }
+		a = &net.TCPAddr{
+			IP:   sa.Addr[0:],
+			Port: sa.Port,
+			Zone: zone,
+		}
+	case *unix.SockaddrUnix:
+		a = &net.UnixAddr{Net: "unix", Name: sa.Name}
+	}
+	return a
 }

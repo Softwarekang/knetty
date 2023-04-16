@@ -19,13 +19,13 @@ package knetty
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/netip"
 	"sync"
 
-	"github.com/Softwarekang/knetty/net/connection"
-	"github.com/Softwarekang/knetty/net/poll"
-	merr "github.com/Softwarekang/knetty/pkg/err"
+	"github.com/Softwarekang/knetty/internal/net"
+	"github.com/Softwarekang/knetty/internal/net/listener"
+	"github.com/Softwarekang/knetty/internal/net/poll"
+	errors "github.com/Softwarekang/knetty/pkg/err"
 	"github.com/Softwarekang/knetty/pkg/log"
 	"github.com/Softwarekang/knetty/session"
 )
@@ -36,7 +36,8 @@ type Server struct {
 
 	mu          sync.Mutex
 	sessions    map[session.Session]struct{}
-	tcpListener net.Listener
+	tcpListener listener.Listener
+	netFd       *poll.NetFileDesc
 	poller      poll.Poll
 	closeCh     chan struct{}
 }
@@ -91,23 +92,13 @@ func (s *Server) listenTcp() error {
 	}
 
 	s.tcpListener, s.address = streamListener, streamListener.Addr().String()
-	file, err := streamListener.(*net.TCPListener).SyscallConn()
-	if err != nil {
-		return err
-	}
-
-	var fd int
-	if err := file.Control(func(d uintptr) {
-		fd = int(d)
-	}); err != nil {
-		return err
-	}
-	if err := s.poller.Register(&poll.NetFileDesc{
-		FD: fd,
+	s.netFd = &poll.NetFileDesc{
+		FD: s.tcpListener.FD(),
 		NetPollListener: poll.NetPollListener{
 			OnRead: s.onRead,
 		},
-	}, poll.Read); err != nil {
+	}
+	if err := s.poller.Register(s.netFd, poll.Read); err != nil {
 		return err
 	}
 
@@ -118,7 +109,7 @@ func (s *Server) listenTcp() error {
 
 func (s *Server) onRead() error {
 	if !s.isActive() {
-		return merr.ServerClosedErr
+		return errors.ServerClosedErr
 	}
 
 	netConn, err := s.tcpListener.Accept()
@@ -126,12 +117,7 @@ func (s *Server) onRead() error {
 		return err
 	}
 
-	tcpConn, err := connection.NewTcpConn(netConn)
-	if err != nil {
-		return err
-	}
-
-	newSession := session.NewSession(tcpConn)
+	newSession := session.NewSession(netConn)
 	if err := s.newSession(newSession); err != nil {
 		return err
 	}
@@ -145,7 +131,7 @@ func (s *Server) onRead() error {
 		return err
 	}
 
-	return tcpConn.Register(poll.Read)
+	return netConn.Register(poll.Read)
 }
 
 func (s *Server) waitQuit() {
@@ -177,7 +163,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		case <-ctx.Done():
 			return fmt.Errorf("server shutdown caused by:%s", ctx.Err())
 		case <-s.closeCh:
-			return merr.ServerClosedErr
+			return errors.ServerClosedErr
 		default:
 			s.closeServerCloseCh()
 			if s.tcpListener != nil {

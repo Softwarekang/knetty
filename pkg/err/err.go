@@ -70,3 +70,11 @@ type bufferEmptyErr struct {
 func (o *bufferEmptyErr) Error() string {
 	return "buffer is empty"
 }
+
+type UnKnowNetworkErr string
+
+func (e UnKnowNetworkErr) Error() string { return "unKnowErr network " + string(e) }
+
+type IllegalListenerErr string
+
+func (e IllegalListenerErr) Error() string { return "illegal listener " + string(e) }

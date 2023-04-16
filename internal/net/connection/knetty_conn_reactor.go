@@ -17,7 +17,7 @@
 package connection
 
 import (
-	"github.com/Softwarekang/knetty/net/poll"
+	"github.com/Softwarekang/knetty/internal/net/poll"
 
 	"golang.org/x/sys/unix"
 )

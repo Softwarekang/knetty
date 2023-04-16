@@ -17,7 +17,11 @@
 // Package connection  implements tcp, udp and other protocols for network connection.
 package connection
 
-import "go.uber.org/atomic"
+import (
+	"github.com/Softwarekang/knetty/internal/net/poll"
+
+	"go.uber.org/atomic"
+)
 
 type ConnType int
 
@@ -43,6 +47,8 @@ type EventTrigger interface {
 type Connection interface {
 	// ID return a uin-type value that uniquely identifies each stream connection。
 	ID() uint64
+	// FD return socket fd.
+	FD() int
 	// LocalAddr return the actual local connection address.
 	LocalAddr() string
 	// RemoteAddr return the actual remote connection address.
@@ -60,6 +66,8 @@ type Connection interface {
 	Len() int
 	// Type Return the current connection network type tcp/udp/ws.
 	Type() ConnType
+	// Register register conn in poller with event.
+	Register(eventType poll.EventType) error
 	// Close the network connection, regardless of the ongoing blocking non-blocking read and write will return an error.
 	Close() error
 }
