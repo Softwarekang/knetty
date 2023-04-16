@@ -19,15 +19,16 @@ package net
 import (
 	"errors"
 	"net"
-	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"golang.org/x/sys/unix"
 )
 
 func TestIPToSockAddrInet4(t *testing.T) {
 	var (
-		sa  *syscall.SockaddrInet4
+		sa  *unix.SockaddrInet4
 		err error
 	)
 	sa, err = iPToSockAddrInet4(nil, 8000)
@@ -80,7 +81,7 @@ func TestResolveNetAddrToSocketAddr(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    syscall.Sockaddr
+		want    unix.Sockaddr
 		wantErr error
 	}{
 		{
@@ -98,7 +99,7 @@ func TestResolveNetAddrToSocketAddr(t *testing.T) {
 					Zone: "",
 				},
 			},
-			want: &syscall.SockaddrInet4{
+			want: &unix.SockaddrInet4{
 				Port: 9000,
 				Addr: [4]byte{'0', '0', '0', '0'},
 			},
@@ -112,7 +113,7 @@ func TestResolveNetAddrToSocketAddr(t *testing.T) {
 					Zone: "",
 				},
 			},
-			want: &syscall.SockaddrInet6{
+			want: &unix.SockaddrInet6{
 				Port: 9000,
 				Addr: [16]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 			},
@@ -126,7 +127,7 @@ func TestResolveNetAddrToSocketAddr(t *testing.T) {
 					Zone: "",
 				},
 			},
-			want: &syscall.SockaddrInet4{
+			want: &unix.SockaddrInet4{
 				Port: 9000,
 				Addr: [4]byte{'0', '0', '0', '0'},
 			},
@@ -140,7 +141,7 @@ func TestResolveNetAddrToSocketAddr(t *testing.T) {
 					Zone: "",
 				},
 			},
-			want: &syscall.SockaddrInet6{
+			want: &unix.SockaddrInet6{
 				Port: 9000,
 				Addr: [16]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 			},

@@ -17,12 +17,10 @@
 package listener
 
 import (
-	"net"
-	"time"
-
 	"github.com/Softwarekang/knetty/internal/net/connection"
 	errors "github.com/Softwarekang/knetty/pkg/err"
 	netutil "github.com/Softwarekang/knetty/pkg/net"
+	"net"
 
 	"golang.org/x/sys/unix"
 )
@@ -45,9 +43,8 @@ type Listener interface {
 
 // TcpListener tcp network listener.
 type TcpListener struct {
-	Fd        int
-	TcpAddr   *net.TCPAddr
-	keepAlive time.Duration
+	Fd      int
+	TcpAddr *net.TCPAddr
 }
 
 // Accept implements Listener.
